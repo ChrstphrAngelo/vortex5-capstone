@@ -47,7 +47,9 @@ const shareDevice = async (req, res) => {
     const device = await Device.findOne({ deviceId })
     if (!device) return res.status(404).json({ error: 'Device not found' })
 
-    const target = await User.findOne({ email: email.trim().toLowerCase() })
+    // Case-insensitive exact match — handles users who signed up with mixed case
+    const escaped = email.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const target = await User.findOne({ email: { $regex: `^${escaped}$`, $options: 'i' } })
     if (!target) return res.status(404).json({ error: 'No user found with that email' })
 
     if ((target.devices || []).includes(deviceId)) {
@@ -74,7 +76,8 @@ const unshareDevice = async (req, res) => {
   if (!email) return res.status(400).json({ error: 'email is required' })
 
   try {
-    const target = await User.findOne({ email: email.trim().toLowerCase() })
+    const escaped = email.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const target = await User.findOne({ email: { $regex: `^${escaped}$`, $options: 'i' } })
     if (!target) return res.status(404).json({ error: 'No user found with that email' })
 
     await User.updateOne(
