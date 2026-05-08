@@ -11,9 +11,9 @@ export default defineConfig({
     port: 5173, // frontend dev server
     proxy: {
       '/api': {
-        target: 'http://localhost:4000', // backend dev server
+        target: 'https://vortex5-capstone.onrender.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
     },
   },

@@ -13,14 +13,13 @@ const Home = () => {
   const canSeeWebAdmin = user && ['admin'].includes(user.role)
 
   useEffect(() => {
+    if (!user) return
     const fetchData = async () => {
       try {
-        const [aqiRes] = await Promise.all([
-          fetch('/api/aqi'),
-        ])
-        const [aqiJson] = await Promise.all([
-          aqiRes.json(),
-        ])
+        const aqiRes = await fetch('/api/aqi', {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        })
+        const aqiJson = await aqiRes.json()
         if (aqiRes.ok && aqiJson.length > 0) {
           const latestAqi = aqiJson.reduce((latest, current) =>
             new Date(current.createdAt) > new Date(latest.createdAt)
@@ -34,7 +33,7 @@ const Home = () => {
       }
     }
     fetchData()
-  }, )
+  }, [user])
 
 
 

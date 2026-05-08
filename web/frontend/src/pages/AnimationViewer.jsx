@@ -26,7 +26,7 @@ const AnimationViewer = () => {
 
             <video controls className="viewer-video">
               <source
-                src={`http://localhost:4000${m.videoUrl}`}
+                src={`https://vortex5-capstone.onrender.com${m.videoUrl}`}
                 type="video/mp4"
               />
             </video>

@@ -24,10 +24,10 @@ function decodeFrame(hexFrame) {
   const word = (n) => bytes.readUInt16BE(4 + (n - 1) * 2)
 
   return {
-    PM1:          word(1),                  // CF=1 standard
-    PM25:         word(2),
-    PM10:         word(3),
-    // word(4..6) atmospheric PM — skipped
+    // word(1..3) CF=1 standard PM — often reads 0 on real units
+    PM1:          word(4),                  // atmospheric PM (real reading)
+    PM25:         word(5),
+    PM10:         word(6),
     // word(7..12) particle counts — skipped
     TVOC:         word(13),                 // µg/m³
     Temperature:  (word(14) - 450) / 10,    // °C, supports negative values

@@ -1,8 +1,10 @@
 // BulletinBoard.jsx
 import { useEffect, useState, useRef } from 'react'
 import AqiDetails from '../components/AqiDetails'
+import { useAuthContext } from '../hooks/useAuthContext'
 
 const BulletinBoard = () => {
+  const { user } = useAuthContext()
   // State for videos (slideshow)
   const [mediaList, setMediaList] = useState([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
@@ -62,7 +64,7 @@ const BulletinBoard = () => {
   useEffect(() => {
     const fetchAqi = async () => {
       try {
-        const res = await fetch('/api/aqi')
+        const res = await fetch('/api/aqi', user ? { headers: { 'Authorization': `Bearer ${user.token}` } } : {})
         const json = await res.json()
         if (res.ok && json.length > 0) {
           const latest = json.reduce((latest, current) =>
@@ -181,7 +183,7 @@ const BulletinBoard = () => {
   }
 
   const getVideoUrl = (videoUrl) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://vortex5-capstone.onrender.com'
     return `${baseUrl}${videoUrl}`
   }
 

@@ -261,24 +261,29 @@ void readSensor() {
     }
   }
 }
+// Hold the BOOT button for 3 seconds during normal operation to wipe Wi-Fi.
+void checkResetButton() {
+  if (digitalRead(RESET_BTN) != LOW) return;
+  unsigned long heldStart = millis();
+  while (digitalRead(RESET_BTN) == LOW) {
+    if (millis() - heldStart >= 3000) {
+      Serial.println("[reset] BOOT held 3s — wiping Wi-Fi creds");
+      prefs.remove("wifi_ssid");
+      prefs.remove("wifi_pass");
+      delay(500);
+      ESP.restart();
+    }
+    delay(50);
+  }
+}
+
 // ---------- main ----------
 void setup() {
   Serial.begin(115200);
   delay(200);
   Serial.println("\n[boot] BewAir node");
 
-  // Hold the BOOT button during power-on to wipe Wi-Fi and enter provisioning.
   pinMode(RESET_BTN, INPUT_PULLUP);
-  if (digitalRead(RESET_BTN) == LOW) {
-    Serial.println("[boot] BOOT button held — factory reset");
-    Preferences p;
-    p.begin("bewair", false);
-    p.remove("wifi_ssid");
-    p.remove("wifi_pass");
-    p.end();
-    delay(500);
-    ESP.restart();
-  }
 
   Serial2.begin(9600, SERIAL_8N1, SENSOR_RX, SENSOR_TX);
   prefs.begin("bewair", false);
@@ -298,7 +303,8 @@ void setup() {
 }
 
 void loop() {
-  httpServer.handleClient();  // /info, /provision, /reset always reachable
+  checkResetButton();           // hold BOOT 3s to factory reset
+  httpServer.handleClient();    // /info, /provision, /reset always reachable
 
   if (mode == MODE_PROVISIONING) return;
 

@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
 import AqiDetails from '../components/AqiDetails'
+import { useAuthContext } from '../hooks/useAuthContext'
 
 const Analytics = () => {
   const [latestAqi, setLatestAqi] = useState(null)
+  const { user } = useAuthContext()
 
   useEffect(() => {
+    if (!user) return
     const fetchLatestAqi = async () => {
       try {
-        const res = await fetch('/api/aqi')
+        const res = await fetch('/api/aqi', {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        })
         const data = await res.json()
         if (res.ok && data.length > 0) {
           const newest = data.reduce((latest, current) =>
@@ -21,7 +26,7 @@ const Analytics = () => {
     }
 
     fetchLatestAqi()
-  }, [])
+  }, [user])
 
   return (
     <div>
