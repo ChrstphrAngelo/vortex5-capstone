@@ -1,0 +1,488 @@
+import { useEffect, useState } from "react"
+import { useAuthContext } from "../hooks/useAuthContext"
+import { Shield, UserCheck, Eye, Power } from "lucide-react"
+
+const USERS_PER_PAGE = 10
+
+const UserManagement = () => {
+    const { user } = useAuthContext()
+
+    const [users, setUsers] = useState([])
+    const [search, setSearch] = useState('')
+    const [sortBy, setSortBy] = useState('alphabetical')
+    const [currentPage, setCurrentPage] = useState(1)
+    const [deactivateTarget, setDeactivateTarget] = useState(null)
+    const [pendingRoles, setPendingRoles] = useState({})
+    const [successMessage, setSuccessMessage] = useState('')
+    const isAdmin = user && user.role === 'admin'
+    const selectedUser = users.find(u => u._id === deactivateTarget)
+    const [confirmChangesModal, setConfirmChangesModal] = useState(false)
+    const [viewUser, setViewUser] = useState(null)
+    
+    // ================= FETCH USERS (ADMIN / STAFF ONLY) =================
+    useEffect(() => {
+        if (!user || user.role === 'patient') return
+
+        const fetchUsers = async () => {
+            const res = await fetch('/api/user', {
+                headers: {
+                    'Authorization': `Bearer ${user.token}`
+                }
+            })
+            const data = await res.json()
+            if (res.ok) setUsers(data)
+        }
+
+        fetchUsers()
+    }, [user])
+
+    // ================= SEARCH =================
+    const filteredUsers = users.filter(u =>
+        ((u.firstName || '') + ' ' + (u.lastName || '') + ' ' + (u.email || ''))
+            .toLowerCase()
+            .includes(search.toLowerCase())
+    )
+
+    // ================= SORT =================
+    const sortedUsers = [...filteredUsers].sort((a, b) => {
+        if (sortBy === 'alphabetical') {
+            const nameA = (a.firstName || '') + ' ' + (a.lastName || '')
+            const nameB = (b.firstName || '') + ' ' + (b.lastName || '')
+            return nameA.localeCompare(nameB)
+        }
+
+        if (sortBy === 'recent') {
+            return a._id < b._id ? 1 : -1
+        }
+
+        if (sortBy === 'role') {
+            return (a.role || '').localeCompare(b.role || '')
+        }
+
+        if (sortBy === 'status') {
+            return (a.status || 'active').localeCompare(b.status || 'active')
+        }
+
+        return 0
+    })
+
+    // ================= PAGINATION =================
+    const indexOfLast = currentPage * USERS_PER_PAGE
+    const indexOfFirst = indexOfLast - USERS_PER_PAGE
+    const currentUsers = sortedUsers.slice(indexOfFirst, indexOfLast)
+    const totalPages = Math.ceil(sortedUsers.length / USERS_PER_PAGE)
+
+    // ================= DEACTIVATE USER =================
+    const confirmDeactivate = async () => {
+        const res = await fetch(`/api/user/${deactivateTarget}/deactivate`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify({ 
+                performedBy: user.email  // Send admin's email to backend
+            })
+        })
+
+        if (res.ok) {
+            setUsers(users.map(u => 
+                u._id === deactivateTarget ? { ...u, status: 'deactivated', deactivatedAt: new Date() } : u
+            ))
+            setDeactivateTarget(null)
+            setSuccessMessage('User deactivated successfully')
+            setTimeout(() => setSuccessMessage(''), 2000)
+        } else {
+            const error = await res.json()
+            setSuccessMessage('Error: ' + error.error)
+            setTimeout(() => setSuccessMessage(''), 2000)
+        }
+    }
+
+    // ================= REACTIVATE USER =================
+    const confirmReactivate = async (userId) => {
+        const res = await fetch(`/api/user/${userId}/reactivate`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify({ 
+                performedBy: user.email  // Send admin's email to backend
+            })
+        })
+
+        if (res.ok) {
+            setUsers(users.map(u => 
+                u._id === userId ? { ...u, status: 'active', deactivatedAt: null } : u
+            ))
+            setViewUser(null)
+            setSuccessMessage('User reactivated successfully')
+            setTimeout(() => setSuccessMessage(''), 2000)
+        } else {
+            const error = await res.json()
+            setSuccessMessage('Error: ' + error.error)
+            setTimeout(() => setSuccessMessage(''), 2000)
+        }
+    }
+
+    // ================= CONFIRM ROLE CHANGES =================
+    const confirmRoleChanges = async () => {
+        for (const userId in pendingRoles) {
+            const userToUpdate = users.find(u => u._id === userId)
+            const oldRole = userToUpdate?.role
+            const newRole = pendingRoles[userId]
+            
+            await fetch(`/api/user/${userId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`
+                },
+                body: JSON.stringify({ 
+                    role: newRole,
+                    performedBy: user.email  // Send admin's email to backend
+                })
+            })
+        }
+
+        setUsers(users.map(u =>
+            pendingRoles[u._id] ? { ...u, role: pendingRoles[u._id] } : u
+        ))
+
+        setPendingRoles({})
+        setSuccessMessage('Changes applied')
+        setTimeout(() => setSuccessMessage(''), 2000)
+    }
+
+    // ================= RENDER =================
+    if (!user) {
+        return <p>Please log in to view this page.</p>
+    }
+
+    return (
+        <div className="user-management">
+
+            {/* ================= USER MANAGEMENT (ADMIN / STAFF) ================= */}
+            {user.role !== 'patient' && (
+                <>
+                    <div className="section-header">
+                        <div>
+                           <h2 className="page-title">User Management</h2>
+                        </div>
+                    </div>
+
+                    {/* SEARCH AND FILTERS */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            marginBottom: '15px'
+                        }}
+                    >
+
+                        <div className="table-controls">
+                            <input
+                                type="text"
+                                placeholder="Search users..."
+                                value={search}
+                                onChange={e => {
+                                setSearch(e.target.value)
+                                setCurrentPage(1)
+                                }}
+                                className="search-input"
+                            />
+
+                            <select
+                                value={sortBy}
+                                onChange={e => setSortBy(e.target.value)}
+                                className="sort-select"
+                            >
+                                <option value="alphabetical">A–Z</option>
+                                <option value="recent">Recent</option>
+                                <option value="role">Role</option>
+                                <option value="status">Status</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* TABLE */}
+                    <div className="table-card">
+                        <table className="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th className="status-col">Status</th>
+                                    {isAdmin && <th className="actions-col">Action</th>}
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                            {currentUsers.map(u => (
+                                <tr
+                                    key={u._id}
+                                    className={`${pendingRoles[u._id] ? "row-edited" : ""} ${u.status === 'deactivated' ? "row-deactivated" : ""}`}
+                                >
+                                    <td className="user-name">
+                                        {u.firstName} {u.lastName}
+                                    </td>
+
+                                    <td className="user-email">{u.email}</td>
+
+                                    <td className="user-status">
+                                        <span className={`status-badge status-${u.status || 'active'}`}>
+                                            {u.status || 'active'}
+                                        </span>
+                                    </td>
+
+                                    {isAdmin && (
+                                        <td>
+                                            <div className="action-buttons">
+                                                <button
+                                                    className="icon-btn view-btn"
+                                                    onClick={() => setViewUser(u)}
+                                                    title="View User"
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+
+                                                {u.status === 'active' && (
+                                                    <button
+                                                        className="icon-btn deactivate-btn"
+                                                        onClick={() => setDeactivateTarget(u._id)}
+                                                        title="Deactivate User"
+                                                    >
+                                                        <Power size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* PAGINATION */}
+                    <div className="pagination">
+                        <button
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(p => p - 1)}
+                        >
+                            Prev
+                        </button>
+
+                        {[...Array(totalPages)].map((_, i) => {
+                            const page = i + 1;
+
+                            if (page <= 4 || page === totalPages) {
+                            return (
+                                <button
+                                key={i}
+                                className={currentPage === page ? 'active' : ''}
+                                onClick={() => setCurrentPage(page)}
+                                >
+                                {page}
+                                </button>
+                            );
+                            }
+
+                            if (page === 5) {
+                            return <span key={i} className="dots">…</span>;
+                            }
+
+                            return null;
+                        })}
+
+                        <button
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(p => p + 1)}
+                        >
+                            Next
+                        </button>
+                    </div>
+
+                    {/* ROLE CONFIRMATION */}
+                    {Object.keys(pendingRoles).length > 0 && (
+                        <div style={{ marginTop: '10px' }}>
+                            <p style={{ color: 'orange' }}>
+                            ⚠ Role changes detected
+                            </p>
+                            <button
+                            className="btn btn-primary"
+                            onClick={() => setConfirmChangesModal(true)}
+                            >
+                            Confirm Changes
+                            </button>
+                        </div>
+                    )}
+
+                    {/* CONFIRM CHANGES MODAL */}
+                    {confirmChangesModal && (
+                        <div className="modal-overlay">
+                            <div className="modal-card">
+                            <div className="modal-header">
+                                <h3>Confirm Role Changes</h3>
+                            </div>
+
+                            <div className="modal-body">
+                                <p>You are about to apply the following changes:</p>
+                                <ul>
+                                {Object.entries(pendingRoles).map(([userId, newRole]) => {
+                                    const userObj = users.find(u => u._id === userId)
+                                    if (!userObj) return null
+                                    return (
+                                    <li key={userId}>
+                                        <strong>{userObj.firstName} {userObj.lastName}</strong>: {userObj.role} → {newRole}
+                                    </li>
+                                    )
+                                })}
+                                </ul>
+                            </div>
+
+                            <div className="modal-actions">
+                                <button
+                                className="btn btn-secondary"
+                                onClick={() => setConfirmChangesModal(false)}
+                                >
+                                Cancel
+                                </button>
+
+                                <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    confirmRoleChanges()
+                                    setConfirmChangesModal(false)
+                                }}
+                                >
+                                Apply Changes
+                                </button>
+                            </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SUCCESS MESSAGE */}
+                    {successMessage && (
+                        <p style={{ color: 'green', marginTop: '10px' }}>
+                            ✅ {successMessage}
+                        </p>
+                    )}
+
+                    {/* DEACTIVATE MODAL */}
+                    {deactivateTarget && (
+                        <div className="modal-overlay">
+                            <div className="modal-card">
+                            
+                            <div className="modal-header">
+                                <h3>Deactivate User</h3>
+                            </div>
+
+                            <div className="modal-body">
+                                <p>
+                                    Are you sure you want to deactivate{" "}
+                                    <strong>
+                                        {selectedUser?.firstName} {selectedUser?.lastName}
+                                    </strong>?
+                                </p>
+                                <p className="modal-warning">
+                                    Deactivated users will not be able to log in.
+                                </p>
+                            </div>
+
+                            <div className="modal-actions">
+                                <button
+                                className="btn btn-secondary"
+                                onClick={() => setDeactivateTarget(null)}
+                                >
+                                Cancel
+                                </button>
+
+                                <button
+                                className="btn btn-warning"
+                                onClick={confirmDeactivate}
+                                >
+                                Deactivate User
+                                </button>
+                            </div>
+
+                            </div>
+                        </div>
+                    )}
+
+                    {/* VIEW USER MODAL with Reactivate button inside */}
+                    {viewUser && (
+                        <div className="modal-overlay">
+                            <div className="modal-card">
+                            
+                            <div className="modal-header">
+                                <h3>User Details</h3>
+                            </div>
+
+                            <div className="modal-body">
+                                <p><strong>Name:</strong> {viewUser.firstName} {viewUser.lastName}</p>
+                                <p><strong>Email:</strong> {viewUser.email}</p>
+                                <p><strong>Status:</strong> {viewUser.status || 'active'}</p>
+                                <p>
+                                    <strong>Role:</strong> {viewUser.role}
+                                    {" "}
+                                    {viewUser.role === "admin" && <Shield size={14} />}
+                                    {viewUser.role === "staff" && <UserCheck size={14} />}
+                                </p>
+                                <p>
+                                    <strong>Date Joined:</strong>{" "}
+                                    {viewUser.createdAt 
+                                        ? new Date(viewUser.createdAt).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                          })
+                                        : 'N/A'}
+                                </p>
+                                
+                                {viewUser.status === 'deactivated' && (
+                                    <p>
+                                        <strong>Deactivated On:</strong>{" "}
+                                        {viewUser.deactivatedAt 
+                                            ? new Date(viewUser.deactivatedAt).toLocaleDateString('en-US', {
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                              })
+                                            : 'Date not recorded'}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="modal-actions">
+                                {viewUser.status === 'deactivated' && (
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => confirmReactivate(viewUser._id)}
+                                    >
+                                        Reactivate User
+                                    </button>
+                                )}
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setViewUser(null)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    )
+}
+
+export default UserManagement

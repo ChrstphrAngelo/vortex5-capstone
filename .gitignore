@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+web/backend/node_modules/
+web/frontend/node_modules/
+
+# Environment files
+.env
+
+# Uploads
+web/backend/uploads/
+
+# Flutter
+mobile/build/
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Arduino build
+firmware/bewair_node/build/
