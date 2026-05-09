@@ -18,7 +18,17 @@ const UserManagement = () => {
     const selectedUser = users.find(u => u._id === deactivateTarget)
     const [confirmChangesModal, setConfirmChangesModal] = useState(false)
     const [viewUser, setViewUser] = useState(null)
-    
+    const [createOpen, setCreateOpen] = useState(false)
+    const [createForm, setCreateForm] = useState({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        role: 'staff',
+    })
+    const [createError, setCreateError] = useState('')
+    const [creating, setCreating] = useState(false)
+
     // ================= FETCH USERS (ADMIN / STAFF ONLY) =================
     useEffect(() => {
         if (!user || user.role === 'patient') return
@@ -155,6 +165,40 @@ const UserManagement = () => {
         setTimeout(() => setSuccessMessage(''), 2000)
     }
 
+    // ================= CREATE USER (ADMIN) =================
+    const handleCreateUser = async () => {
+        const { firstName, lastName, email, password, role } = createForm
+        if (!firstName || !lastName || !email || !password) {
+            setCreateError('All fields are required.')
+            return
+        }
+        setCreating(true)
+        setCreateError('')
+
+        const res = await fetch('/api/user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify({ firstName, lastName, email, password, role })
+        })
+
+        const data = await res.json()
+        setCreating(false)
+
+        if (!res.ok) {
+            setCreateError(data.error || 'Failed to create user.')
+            return
+        }
+
+        setUsers(prev => [data, ...prev])
+        setCreateOpen(false)
+        setCreateForm({ firstName: '', lastName: '', email: '', password: '', role: 'staff' })
+        setSuccessMessage(`${role === 'admin' ? 'Admin' : 'Staff'} account created for ${data.email}`)
+        setTimeout(() => setSuccessMessage(''), 3000)
+    }
+
     // ================= RENDER =================
     if (!user) {
         return <p>Please log in to view this page.</p>
@@ -205,6 +249,16 @@ const UserManagement = () => {
                                 <option value="status">Status</option>
                             </select>
                         </div>
+
+                        {isAdmin && (
+                            <button
+                                className="btn btn-primary"
+                                style={{ marginLeft: 'auto' }}
+                                onClick={() => setCreateOpen(true)}
+                            >
+                                + Create User
+                            </button>
+                        )}
                     </div>
 
                     {/* TABLE */}
@@ -214,6 +268,7 @@ const UserManagement = () => {
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
+                                    <th>Role</th>
                                     <th className="status-col">Status</th>
                                     {isAdmin && <th className="actions-col">Action</th>}
                                 </tr>
@@ -230,6 +285,35 @@ const UserManagement = () => {
                                     </td>
 
                                     <td className="user-email">{u.email}</td>
+
+                                    <td>
+                                        {isAdmin && u._id !== user._id ? (
+                                            <select
+                                                value={pendingRoles[u._id] ?? u.role}
+                                                onChange={e => {
+                                                    const newRole = e.target.value
+                                                    if (newRole === u.role) {
+                                                        // Reverting to original — clear pending
+                                                        const next = { ...pendingRoles }
+                                                        delete next[u._id]
+                                                        setPendingRoles(next)
+                                                    } else {
+                                                        setPendingRoles({ ...pendingRoles, [u._id]: newRole })
+                                                    }
+                                                }}
+                                                className="sort-select"
+                                            >
+                                                <option value="staff">staff</option>
+                                                <option value="admin">admin</option>
+                                            </select>
+                                        ) : (
+                                            <span>
+                                                {u.role}
+                                                {u.role === 'admin' && <Shield size={14} style={{ marginLeft: 4 }} />}
+                                                {u.role === 'staff' && <UserCheck size={14} style={{ marginLeft: 4 }} />}
+                                            </span>
+                                        )}
+                                    </td>
 
                                     <td className="user-status">
                                         <span className={`status-badge status-${u.status || 'active'}`}>
@@ -476,6 +560,80 @@ const UserManagement = () => {
                                 </button>
                             </div>
 
+                            </div>
+                        </div>
+                    )}
+                    {/* CREATE USER MODAL */}
+                    {createOpen && (
+                        <div className="modal-overlay">
+                            <div className="modal-card">
+                                <div className="modal-header">
+                                    <h3>Create New User</h3>
+                                </div>
+
+                                <div className="modal-body">
+                                    <div style={{ display: 'grid', gap: 10 }}>
+                                        <input
+                                            type="text"
+                                            placeholder="First name"
+                                            value={createForm.firstName}
+                                            onChange={e => setCreateForm({ ...createForm, firstName: e.target.value })}
+                                            className="search-input"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Last name"
+                                            value={createForm.lastName}
+                                            onChange={e => setCreateForm({ ...createForm, lastName: e.target.value })}
+                                            className="search-input"
+                                        />
+                                        <input
+                                            type="email"
+                                            placeholder="Email"
+                                            value={createForm.email}
+                                            onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                                            className="search-input"
+                                        />
+                                        <input
+                                            type="password"
+                                            placeholder="Password (min 8, mixed case, number, symbol)"
+                                            value={createForm.password}
+                                            onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                                            className="search-input"
+                                        />
+                                        <select
+                                            value={createForm.role}
+                                            onChange={e => setCreateForm({ ...createForm, role: e.target.value })}
+                                            className="sort-select"
+                                        >
+                                            <option value="staff">Staff (teacher)</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </div>
+                                    {createError && (
+                                        <p style={{ color: 'red', marginTop: 10 }}>{createError}</p>
+                                    )}
+                                </div>
+
+                                <div className="modal-actions">
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => {
+                                            setCreateOpen(false)
+                                            setCreateError('')
+                                        }}
+                                        disabled={creating}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={handleCreateUser}
+                                        disabled={creating}
+                                    >
+                                        {creating ? 'Creating...' : 'Create User'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

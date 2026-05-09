@@ -1,8 +1,10 @@
 const express = require('express')
+const { requireAuth, requireAdmin } = require('../middleware/requireAuth')
 const {
     signupUser,
     loginUser,
     getUsers,
+    createUserByAdmin,
     deactivateUser,
     reactivateUser,
     updateUserRole
@@ -10,14 +12,15 @@ const {
 
 const router = express.Router()
 
-// auth
+// Public auth routes
 router.post('/login', loginUser)
 router.post('/signup', signupUser)
 
-// user management
-router.get('/', getUsers)
-router.patch('/:id/deactivate', deactivateUser)
-router.patch('/:id/reactivate', reactivateUser)
-router.patch('/:id', updateUserRole)
+// Admin-only user management
+router.get('/',                    requireAuth, requireAdmin, getUsers)
+router.post('/',                   requireAuth, requireAdmin, createUserByAdmin)
+router.patch('/:id/deactivate',    requireAuth, requireAdmin, deactivateUser)
+router.patch('/:id/reactivate',    requireAuth, requireAdmin, reactivateUser)
+router.patch('/:id',               requireAuth, requireAdmin, updateUserRole)
 
 module.exports = router

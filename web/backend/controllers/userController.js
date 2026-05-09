@@ -27,9 +27,14 @@ const loginUser = async (req, res) => {
 }
 
 const signupUser = async (req, res) => {
-    const {email, password, firstName, lastName, role} = req.body
+    const {email, password, firstName, lastName} = req.body
 
     try {
+        // First account in the system becomes admin automatically.
+        // Everyone else signs up as staff. Public signup cannot self-elevate to admin.
+        const userCount = await User.countDocuments()
+        const role = userCount === 0 ? 'admin' : 'staff'
+
         const user = await User.signup(email, password, firstName, lastName, role)
         const token = createToken(user._id)
 
@@ -46,6 +51,38 @@ const signupUser = async (req, res) => {
             role: user.role,
             status: user.status,
             token
+        })
+    } catch (error) {
+        res.status(400).json({error: error.message})
+    }
+}
+
+// Admin-only: create a new user with a chosen role.
+// Different from signup — this doesn't log the new user in, doesn't return a token.
+const createUserByAdmin = async (req, res) => {
+    const {email, password, firstName, lastName, role} = req.body
+
+    if (!['admin', 'staff'].includes(role)) {
+        return res.status(400).json({error: 'Invalid role. Must be admin or staff.'})
+    }
+
+    try {
+        const user = await User.signup(email, password, firstName, lastName, role)
+
+        logAudit({
+            module: 'User',
+            action: `New ${role} created: ${firstName} ${lastName} (${email}) by ${req.user.email}`,
+            user: req.user.email
+        })
+
+        res.status(200).json({
+            _id: user._id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            status: user.status,
+            createdAt: user.createdAt
         })
     } catch (error) {
         res.status(400).json({error: error.message})
@@ -167,6 +204,7 @@ module.exports = {
     signupUser,
     loginUser,
     getUsers,
+    createUserByAdmin,
     deactivateUser,
     reactivateUser,
     updateUserRole
