@@ -70,6 +70,19 @@ class AppState extends ChangeNotifier {
 
   SensorReadings? get _activeReading => _readingsBySensorId[_activeSensorId];
 
+  /// Public lookup so widgets can show per-device data without changing the active sensor.
+  SensorReadings? readingFor(String sensorId) => _readingsBySensorId[sensorId];
+
+  /// Unique room names from the user's sensors, alphabetically sorted.
+  List<String> get rooms {
+    final set = <String>{};
+    for (final s in _sensors) {
+      if (s.room.trim().isNotEmpty) set.add(s.room.trim());
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
   String get co2          => _fmt(_activeReading?.co2,           1, ' ppm', 0);
   String get pm1          => _fmt(_activeReading?.pm1,           1, ' µg/m³', 1);
   String get pm25         => _fmt(_activeReading?.pm25,          1, ' µg/m³', 1);
