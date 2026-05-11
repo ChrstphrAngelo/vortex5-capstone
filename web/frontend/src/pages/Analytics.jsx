@@ -14,6 +14,9 @@ import Select from '@mui/material/Select'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
+import Switch from '@mui/material/Switch'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Stack from '@mui/material/Stack'
 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
@@ -50,6 +53,11 @@ const Analytics = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Live mode: auto-refresh every 30 seconds. Turns off when the user manually
+  // edits the date range so we don't keep overwriting their selection.
+  const [liveMode, setLiveMode] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(null)
+
   // Fetch devices for the filter dropdown
   useEffect(() => {
     if (!isAdmin) return
@@ -62,16 +70,20 @@ const Analytics = () => {
     fetchDevices()
   }, [user, isAdmin])
 
-  // Fetch analytics on filter change
+  // Fetch analytics on filter change + poll every 30s while live mode is on.
   useEffect(() => {
     if (!isAdmin) return
-    const fetchAnalytics = async () => {
-      setLoading(true)
+
+    const fetchAnalytics = async (isInitial = false) => {
+      if (isInitial) setLoading(true)
       setError('')
+
+      // In live mode, always query up to "now" so new data shows up.
+      const effectiveTo = liveMode ? dayjs() : to
 
       const params = new URLSearchParams({
         from: from.toISOString(),
-        to: to.toISOString(),
+        to: effectiveTo.toISOString(),
       })
       if (deviceId !== 'all') params.append('deviceId', deviceId)
 
@@ -82,14 +94,20 @@ const Analytics = () => {
         const json = await res.json()
         if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
         setData(json)
+        setLastUpdated(new Date())
       } catch (err) {
         setError(err.message)
       } finally {
-        setLoading(false)
+        if (isInitial) setLoading(false)
       }
     }
-    fetchAnalytics()
-  }, [user, isAdmin, from, to, deviceId])
+
+    fetchAnalytics(true)
+
+    if (!liveMode) return
+    const interval = setInterval(() => fetchAnalytics(false), 30000)
+    return () => clearInterval(interval)
+  }, [user, isAdmin, from, to, deviceId, liveMode])
 
   // Pie chart data
   const pieData = useMemo(() => {
@@ -134,9 +152,49 @@ const Analytics = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ p: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, mb: 2 }}>
-          Analytics
-        </Typography>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          flexWrap="wrap"
+          gap={2}
+          sx={{ mb: 2 }}
+        >
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Analytics
+          </Typography>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            {lastUpdated && (
+              <Stack direction="row" alignItems="center" spacing={0.7}>
+                <Box
+                  sx={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    bgcolor: liveMode ? '#22C55E' : '#94A3B8',
+                    boxShadow: liveMode ? '0 0 0 4px rgba(34,197,94,0.18)' : 'none',
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {liveMode ? 'Live · ' : 'Paused · '}
+                  Last updated {dayjs(lastUpdated).format('HH:mm:ss')}
+                </Typography>
+              </Stack>
+            )}
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={liveMode}
+                  onChange={(e) => {
+                    const on = e.target.checked
+                    setLiveMode(on)
+                    if (on) setTo(dayjs()) // jump 'to' back to now when turning live mode on
+                  }}
+                />
+              }
+              label="Live"
+            />
+          </Stack>
+        </Stack>
 
         {/* ============ FILTER BAR ============ */}
         <Card sx={{ mb: 2 }}>
@@ -146,7 +204,7 @@ const Analytics = () => {
                 <DateTimePicker
                   label="From"
                   value={from}
-                  onChange={setFrom}
+                  onChange={(v) => { setFrom(v); setLiveMode(false) }}
                   slotProps={{ textField: { fullWidth: true, size: 'small' } }}
                 />
               </Grid>
@@ -154,8 +212,9 @@ const Analytics = () => {
                 <DateTimePicker
                   label="To"
                   value={to}
-                  onChange={setTo}
+                  onChange={(v) => { setTo(v); setLiveMode(false) }}
                   slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                  disabled={liveMode}
                 />
               </Grid>
               <Grid item xs={12} md={3}>
@@ -280,17 +339,29 @@ const Analytics = () => {
                       <Typography color="text.secondary">No data in this range.</Typography>
                     ) : (
                       <PieChart
-                        height={300}
+                        height={340}
+                        margin={{ top: 50, bottom: 20, left: 20, right: 20 }}
                         series={[{
                           data: pieData,
-                          innerRadius: 60,
-                          outerRadius: 110,
+                          innerRadius: 55,
+                          outerRadius: 95,
                           paddingAngle: 2,
                           cornerRadius: 4,
-                          arcLabel: (item) => `${item.label}`,
+                          // Show only percentage inside the arc — short enough to fit.
+                          arcLabel: (item) => {
+                            const total = pieData.reduce((s, d) => s + d.value, 0)
+                            const pct = Math.round((item.value / total) * 100)
+                            return pct >= 5 ? `${pct}%` : ''
+                          },
+                          arcLabelMinAngle: 20,
+                          arcLabelRadius: 75,
                         }]}
-                        slotProps={{
-                          legend: { hidden: false },
+                        sx={{
+                          '& .MuiPieArcLabel-root': {
+                            fill: 'white',
+                            fontWeight: 700,
+                            fontSize: 12,
+                          },
                         }}
                       />
                     )}
@@ -309,10 +380,16 @@ const Analytics = () => {
                       <Typography color="text.secondary">No data in this range.</Typography>
                     ) : (
                       <BarChart
-                        height={300}
+                        height={320}
+                        margin={{ top: 30, bottom: 90, left: 50, right: 10 }}
                         xAxis={[{
                           scaleType: 'band',
-                          data: data.byDevice.map(d => `${d.name}\n${d.room}`),
+                          data: data.byDevice.map(d => d.name || d.deviceId),
+                          tickLabelStyle: {
+                            angle: -25,
+                            textAnchor: 'end',
+                            fontSize: 12,
+                          },
                         }]}
                         series={[{
                           data: data.byDevice.map(d => d.avgAqi),

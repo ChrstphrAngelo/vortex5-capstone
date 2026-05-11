@@ -11,6 +11,7 @@ const auditLogRoutes = require('./routes/auditLog')
 const mediaRoutes = require('./routes/media')
 const announcementRoutes = require('./routes/announcement')
 const deviceRoutes = require('./routes/device')
+const dashboardRoutes = require('./routes/dashboard')
 
 const mqttSubscriber = require('./services/mqttSubscriber')
 
@@ -35,6 +36,7 @@ app.use('/api/auditlog',      auditLogRoutes)        // lowercase to match front
 app.use('/api/media',         mediaRoutes)
 app.use('/api/announcements', announcementRoutes)
 app.use('/api/device',        deviceRoutes)
+app.use('/api/dashboard',     dashboardRoutes)
 
 // connect to db // mongoose
 mongoose.connect(process.env.MONGO_URI)

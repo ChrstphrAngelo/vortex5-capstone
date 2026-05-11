@@ -20,6 +20,7 @@ import AnimationViewer from './pages/AnimationViewer.jsx';
 import WebBulletinBoard from './pages/WebBulletinBoard.jsx';
 import Thresholds from './pages/Thresholds.jsx';
 import LandingPage from './pages/LandingPage.jsx';
+import DeviceDetail from './pages/DeviceDetail.jsx';
 
 // Create a separate component for the routes (needs to be inside BrowserRouter)
 function AppRoutes() {
@@ -71,9 +72,14 @@ function AppRoutes() {
               element={<ConnectSensor />}
             />
 
-            <Route 
+            <Route
               path="/profile"
               element={<Profile />}
+            />
+
+            <Route
+              path="/device/:deviceId"
+              element={user ? <DeviceDetail /> : <Navigate to="/login" />}
             />
             
             <Route 
