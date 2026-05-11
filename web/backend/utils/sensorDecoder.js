@@ -22,6 +22,16 @@ function decodeFrame(hexFrame) {
 
   // 17 data words for FS00905B
   const word = (n) => bytes.readUInt16BE(4 + (n - 1) * 2)
+  const numWords = (lengthField - 2) / 2  // length includes checksum
+
+  // Debug mode: log raw hex + every word so we can verify field offsets.
+  // Toggle by setting DEBUG_SENSOR=1 in env, or remove this block once stable.
+  if (process.env.DEBUG_SENSOR === '1') {
+    const allWords = []
+    for (let i = 1; i <= numWords; i++) allWords.push(`w${i}=${word(i)}`)
+    console.log(`[sensor] raw hex: ${hexFrame}`)
+    console.log(`[sensor] numWords=${numWords} | ${allWords.join(' ')}`)
+  }
 
   return {
     // word(1..3) CF=1 standard PM — often reads 0 on real units
