@@ -80,14 +80,15 @@ const StaffDeviceList = () => {
       ) : (
         <div className="dash-device-grid">
           {devices.map(d => {
-            const r = readings[d.deviceId]
+            const now = Date.now()
+            const lastSeen = d.lastSeen ? new Date(d.lastSeen).getTime() : 0
+            const isOnline = d.status === 'online' && (now - lastSeen) < 30 * 1000
+            // Only use the reading if the device is online — stale data clears to "--"
+            const r = isOnline ? readings[d.deviceId] : null
             const aqi = r?.Aqi
             const category = aqiCategory(aqi)
             const aqiColor = category ? CATEGORY_COLORS[category] : '#94a3b8'
 
-            const now = Date.now()
-            const lastSeen = d.lastSeen ? new Date(d.lastSeen).getTime() : 0
-            const isOnline = d.status === 'online' && (now - lastSeen) < 30 * 1000
             const statusKey = !isOnline ? 'offline' : (r ? 'active' : 'available')
             const status = STATUS_LABELS[statusKey]
 

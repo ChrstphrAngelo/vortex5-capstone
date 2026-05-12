@@ -32,12 +32,13 @@ const getDashboardSummary = async (req, res) => {
       latestReadings.map(r => [r._id, r.latest])
     )
 
-    // Derive online/offline status (lastSeen < 30s = online)
+    // Derive online/offline status (lastSeen < 30s = online).
+    // When offline, null out reading-derived fields so the UI shows "--" instead of stale data.
     const now = Date.now()
     const enrichedDevices = devices.map(d => {
       const lastSeen = d.lastSeen ? new Date(d.lastSeen).getTime() : 0
       const isOnline = d.status === 'online' && (now - lastSeen) < 30 * 1000
-      const reading = readingMap[d.deviceId]
+      const reading = isOnline ? readingMap[d.deviceId] : null
       const aqi = reading?.Aqi
       return {
         deviceId: d.deviceId,
@@ -78,6 +79,8 @@ const getDashboardSummary = async (req, res) => {
 
     const alerts = []
     for (const d of enrichedDevices) {
+      // Skip offline devices — stale readings shouldn't trigger active alerts.
+      if (d.status === 'offline') continue
       const r = readingMap[d.deviceId]
       if (!r) continue
       const fields = ['Aqi', 'PM25', 'PM10', 'CO2', 'TVOC', 'Formaldehyde']
