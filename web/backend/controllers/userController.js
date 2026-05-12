@@ -1,5 +1,7 @@
 const User = require('../models/userModel')
 const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt')
+const validator = require('validator')
 const logAudit = require('../utils/logAudit');
 
 const createToken = (_id) => {
@@ -200,6 +202,95 @@ const updateUserRole = async (req, res) => {
     }
 }
 
+// GET /api/user/me — current logged-in user's profile
+const getMyProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('-password')
+        if (!user) return res.status(404).json({ error: 'User not found' })
+        res.status(200).json(user)
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
+// PATCH /api/user/me — update current user's firstName, lastName, email
+const updateMyProfile = async (req, res) => {
+    const { firstName, lastName, email } = req.body
+
+    if (firstName !== undefined && !firstName.trim()) {
+        return res.status(400).json({ error: 'First name cannot be empty' })
+    }
+    if (lastName !== undefined && !lastName.trim()) {
+        return res.status(400).json({ error: 'Last name cannot be empty' })
+    }
+    if (email !== undefined && !validator.isEmail(email)) {
+        return res.status(400).json({ error: 'Invalid email' })
+    }
+
+    try {
+        // If changing email, check it's not already taken by another user
+        if (email !== undefined) {
+            const existing = await User.findOne({ email })
+            if (existing && existing._id.toString() !== req.user._id.toString()) {
+                return res.status(400).json({ error: 'Email already in use' })
+            }
+        }
+
+        const updates = {}
+        if (firstName !== undefined) updates.firstName = firstName.trim()
+        if (lastName  !== undefined) updates.lastName  = lastName.trim()
+        if (email     !== undefined) updates.email     = email.trim()
+
+        const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).select('-password')
+        if (!user) return res.status(404).json({ error: 'User not found' })
+
+        logAudit({
+            module: 'User',
+            action: `${user.email} updated their profile`,
+            user: user.email,
+        })
+
+        res.status(200).json(user)
+    } catch (error) {
+        res.status(400).json({ error: error.message })
+    }
+}
+
+// POST /api/user/me/password — change current user's password
+const changeMyPassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body
+
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Current and new password are required' })
+    }
+    if (!validator.isStrongPassword(newPassword)) {
+        return res.status(400).json({ error: 'New password is not strong enough (need 8+ chars, mixed case, number, symbol)' })
+    }
+
+    try {
+        const user = await User.findById(req.user._id)
+        if (!user) return res.status(404).json({ error: 'User not found' })
+
+        const match = await bcrypt.compare(currentPassword, user.password)
+        if (!match) return res.status(400).json({ error: 'Current password is incorrect' })
+
+        const salt = await bcrypt.genSalt(10)
+        const hash = await bcrypt.hash(newPassword, salt)
+        user.password = hash
+        await user.save()
+
+        logAudit({
+            module: 'User',
+            action: `${user.email} changed their password`,
+            user: user.email,
+        })
+
+        res.status(200).json({ ok: true, message: 'Password updated successfully' })
+    } catch (error) {
+        res.status(400).json({ error: error.message })
+    }
+}
+
 module.exports = {
     signupUser,
     loginUser,
@@ -207,5 +298,8 @@ module.exports = {
     createUserByAdmin,
     deactivateUser,
     reactivateUser,
-    updateUserRole
+    updateUserRole,
+    getMyProfile,
+    updateMyProfile,
+    changeMyPassword,
 }

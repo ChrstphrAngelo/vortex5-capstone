@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
 import {
   Activity, AlertTriangle, Cpu, Users,
-  Wifi, WifiOff, Plus, Megaphone, Settings, BarChart3,
+  Megaphone, Settings, BarChart3, X,
 } from 'lucide-react'
 
 const CATEGORY_COLORS = {
@@ -29,6 +29,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [lastUpdated, setLastUpdated] = useState(null)
+
+  // Which modal (if any) is open
+  const [modal, setModal] = useState(null) // 'devices' | 'alerts' | null
 
   useEffect(() => {
     if (!user) return
@@ -91,19 +94,21 @@ const AdminDashboard = () => {
           label="Devices Online"
           value={`${kpis.onlineDevices} / ${kpis.totalDevices}`}
           accent={kpis.offlineDevices > 0 ? '#dc2626' : '#16a34a'}
+          onClick={() => setModal('devices')}
         />
         <KpiTile
           icon={<Users size={20} />}
           label="Users"
           value={kpis.userCount}
           accent="#2563eb"
-          onClick={() => navigate('/user-management')}
+          onClick={() => navigate('/usermanagement')}
         />
         <KpiTile
           icon={<AlertTriangle size={20} />}
           label="Active Alerts"
           value={kpis.activeAlerts}
           accent={kpis.activeAlerts > 0 ? '#dc2626' : '#94a3b8'}
+          onClick={() => setModal('alerts')}
         />
         <KpiTile
           icon={<Activity size={20} />}
@@ -114,100 +119,65 @@ const AdminDashboard = () => {
         />
       </div>
 
-      {/* Main two-column layout */}
-      <div className="dash-grid">
-
-        {/* Devices */}
-        <div className="dash-section">
-          <div className="dash-section-head">
-            <h2>Devices</h2>
-            <span className="dash-section-count">{devices.length} total</span>
-          </div>
-
-          {devices.length === 0 ? (
-            <div className="dash-empty">
-              No devices yet. Use the BewAir mobile app to provision a new sensor.
-            </div>
-          ) : (
-            <div className="dash-device-grid">
-              {devices.map(d => {
-                const status = STATUS_LABELS[d.status] || STATUS_LABELS.offline
-                const aqiColor = d.category
-                  ? CATEGORY_COLORS[d.category]
-                  : '#94a3b8'
-                return (
-                  <div key={d.deviceId} className="dash-device-card">
-                    <div className="dash-device-head">
-                      <div>
-                        <div className="dash-device-name">{d.name}</div>
-                        <div className="dash-device-room">{d.room}</div>
-                      </div>
-                      <span
-                        className="dash-status-pill"
-                        style={{ background: status.bg, color: status.color }}
-                      >
-                        {status.label}
-                      </span>
-                    </div>
-
-                    <div className="dash-aqi-big" style={{ color: aqiColor }}>
-                      {d.aqi != null ? d.aqi : '--'}
-                    </div>
-                    <div className="dash-aqi-label" style={{ color: aqiColor }}>
-                      {d.category || 'No data'}
-                    </div>
-
-                    <div className="dash-device-metrics">
-                      <Metric label="PM2.5"   value={d.pm25 != null ? `${d.pm25} µg/m³` : '--'} />
-                      <Metric label="CO₂"     value={d.co2  != null ? `${d.co2} ppm` : '--'} />
-                      <Metric label="Temp"    value={d.temp != null ? `${d.temp.toFixed(1)}°C` : '--'} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+      {/* Devices section (full width — alerts panel is now in a modal) */}
+      <div className="dash-section">
+        <div className="dash-section-head">
+          <h2>Devices</h2>
+          <span className="dash-section-count">{devices.length} total</span>
         </div>
 
-        {/* Alerts */}
-        <div className="dash-section">
-          <div className="dash-section-head">
-            <h2>Current Alerts</h2>
-            <span className="dash-section-count">{alerts.length} active</span>
+        {devices.length === 0 ? (
+          <div className="dash-empty">
+            No devices yet. Use the BewAir mobile app to provision a new sensor.
           </div>
-
-          {alerts.length === 0 ? (
-            <div className="dash-empty dash-empty-ok">
-              <span className="dash-ok-icon">✓</span>
-              All sensors within thresholds.
-            </div>
-          ) : (
-            <div className="dash-alert-list">
-              {alerts.slice(0, 10).map((a, i) => (
+        ) : (
+          <div className="dash-device-grid">
+            {devices.map(d => {
+              const status = STATUS_LABELS[d.status] || STATUS_LABELS.offline
+              const aqiColor = d.category
+                ? CATEGORY_COLORS[d.category]
+                : '#94a3b8'
+              return (
                 <div
-                  key={i}
-                  className={`dash-alert dash-alert-${a.severity}`}
+                  key={d.deviceId}
+                  className="dash-device-card dash-device-card-clickable"
+                  onClick={() => navigate(`/device/${d.deviceId}`)}
                 >
-                  <div className="dash-alert-head">
-                    <strong>{a.name}</strong>
-                    <span className="dash-alert-room">{a.room}</span>
-                  </div>
-                  <div className="dash-alert-detail">
-                    <span className="dash-alert-field">{labelFor(a.field)}</span>
-                    <span className="dash-alert-value">
-                      {a.value} <span className="dash-alert-limit">/ {a.limit}</span>
+                  <div className="dash-device-head">
+                    <div>
+                      <div className="dash-device-name">{d.name}</div>
+                      <div className="dash-device-room">{d.room}</div>
+                    </div>
+                    <span
+                      className="dash-status-pill"
+                      style={{ background: status.bg, color: status.color }}
+                    >
+                      {status.label}
                     </span>
                   </div>
+
+                  <div className="dash-aqi-big" style={{ color: aqiColor }}>
+                    {d.aqi != null ? d.aqi : '--'}
+                  </div>
+                  <div className="dash-aqi-label" style={{ color: aqiColor }}>
+                    {d.category || 'No data'}
+                  </div>
+
+                  <div className="dash-device-metrics">
+                    <Metric label="PM2.5" value={d.pm25 != null ? `${d.pm25} µg/m³` : '--'} />
+                    <Metric label="CO₂"   value={d.co2  != null ? `${d.co2} ppm` : '--'} />
+                    <Metric label="Temp"  value={d.temp != null ? `${d.temp.toFixed(1)}°C` : '--'} />
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}
       <div className="dash-actions">
-        <button className="dash-action-btn" onClick={() => navigate('/user-management')}>
+        <button className="dash-action-btn" onClick={() => navigate('/usermanagement')}>
           <Users size={18} />
           Manage Users
         </button>
@@ -215,15 +185,30 @@ const AdminDashboard = () => {
           <BarChart3 size={18} />
           View Analytics
         </button>
-        <button className="dash-action-btn" onClick={() => navigate('/configuration')}>
+        <button className="dash-action-btn" onClick={() => navigate('/configuration/Thresholds')}>
           <Settings size={18} />
           Settings
         </button>
-        <button className="dash-action-btn" onClick={() => navigate('/bulletin-board')}>
+        <button className="dash-action-btn" onClick={() => navigate('/configuration/WebBulletinBoard')}>
           <Megaphone size={18} />
           Bulletin Board
         </button>
       </div>
+
+      {/* ============ Modals ============ */}
+      {modal === 'devices' && (
+        <DevicesModal devices={devices} onClose={() => setModal(null)} onSelect={(id) => {
+          setModal(null)
+          navigate(`/device/${id}`)
+        }} />
+      )}
+
+      {modal === 'alerts' && (
+        <AlertsModal alerts={alerts} onClose={() => setModal(null)} onSelect={(id) => {
+          setModal(null)
+          navigate(`/device/${id}`)
+        }} />
+      )}
     </div>
   )
 }
@@ -246,6 +231,110 @@ const Metric = ({ label, value }) => (
   <div className="dash-metric">
     <div className="dash-metric-label">{label}</div>
     <div className="dash-metric-value">{value}</div>
+  </div>
+)
+
+const DevicesModal = ({ devices, onClose, onSelect }) => {
+  const online = devices.filter(d => d.status === 'active' || d.status === 'available')
+  const offline = devices.filter(d => d.status === 'offline')
+
+  return (
+    <ModalShell title="All Devices" onClose={onClose}>
+      <div className="dash-modal-section">
+        <div className="dash-modal-section-head">
+          <span className="dash-modal-dot" style={{ background: '#16a34a' }} />
+          Online ({online.length})
+        </div>
+        {online.length === 0 ? (
+          <p className="dash-modal-empty">No devices online.</p>
+        ) : (
+          <div className="dash-modal-list">
+            {online.map(d => (
+              <DeviceRow key={d.deviceId} device={d} onSelect={onSelect} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="dash-modal-section">
+        <div className="dash-modal-section-head">
+          <span className="dash-modal-dot" style={{ background: '#dc2626' }} />
+          Inactive ({offline.length})
+        </div>
+        {offline.length === 0 ? (
+          <p className="dash-modal-empty">All devices are reporting.</p>
+        ) : (
+          <div className="dash-modal-list">
+            {offline.map(d => (
+              <DeviceRow key={d.deviceId} device={d} onSelect={onSelect} />
+            ))}
+          </div>
+        )}
+      </div>
+    </ModalShell>
+  )
+}
+
+const DeviceRow = ({ device, onSelect }) => {
+  const status = STATUS_LABELS[device.status] || STATUS_LABELS.offline
+  return (
+    <div className="dash-modal-row" onClick={() => onSelect(device.deviceId)}>
+      <div>
+        <strong>{device.name}</strong>
+        <div className="dash-modal-row-sub">{device.room} · {device.deviceId}</div>
+      </div>
+      <span className="dash-status-pill" style={{ background: status.bg, color: status.color }}>
+        {status.label}
+      </span>
+    </div>
+  )
+}
+
+const AlertsModal = ({ alerts, onClose, onSelect }) => {
+  return (
+    <ModalShell title="Active Alerts" onClose={onClose}>
+      {alerts.length === 0 ? (
+        <div className="dash-empty dash-empty-ok">
+          <span className="dash-ok-icon">✓</span>
+          All sensors within thresholds.
+        </div>
+      ) : (
+        <div className="dash-alert-list">
+          {alerts.map((a, i) => (
+            <div
+              key={i}
+              className={`dash-alert dash-alert-${a.severity} dash-alert-clickable`}
+              onClick={() => onSelect(a.deviceId)}
+            >
+              <div className="dash-alert-head">
+                <strong>{a.name}</strong>
+                <span className="dash-alert-room">{a.room}</span>
+              </div>
+              <div className="dash-alert-detail">
+                <span className="dash-alert-field">{labelFor(a.field)}</span>
+                <span className="dash-alert-value">
+                  {a.value} <span className="dash-alert-limit">/ {a.limit}</span>
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </ModalShell>
+  )
+}
+
+const ModalShell = ({ title, onClose, children }) => (
+  <div className="dash-modal-overlay" onClick={onClose}>
+    <div className="dash-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="dash-modal-head">
+        <h2>{title}</h2>
+        <button className="dash-modal-close" onClick={onClose}>
+          <X size={20} />
+        </button>
+      </div>
+      <div className="dash-modal-body">{children}</div>
+    </div>
   </div>
 )
 

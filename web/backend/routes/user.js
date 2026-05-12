@@ -7,7 +7,10 @@ const {
     createUserByAdmin,
     deactivateUser,
     reactivateUser,
-    updateUserRole
+    updateUserRole,
+    getMyProfile,
+    updateMyProfile,
+    changeMyPassword,
 } = require('../controllers/userController')
 
 const router = express.Router()
@@ -15,6 +18,11 @@ const router = express.Router()
 // Public auth routes
 router.post('/login', loginUser)
 router.post('/signup', signupUser)
+
+// Self-service routes (any authenticated user)
+router.get('/me',            requireAuth, getMyProfile)
+router.patch('/me',          requireAuth, updateMyProfile)
+router.post('/me/password',  requireAuth, changeMyPassword)
 
 // Admin-only user management
 router.get('/',                    requireAuth, requireAdmin, getUsers)

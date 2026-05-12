@@ -102,14 +102,14 @@ const Navbar = () => {
 
             {user.role === 'staff' && (
               <>
+                <NavLink to="/" end>
+                  <LayoutDashboard size={18} />
+                  <span>My Devices</span>
+                </NavLink>
+
                 <NavLink to="/alerts-and-notifications">
                   <Bell size={18} />
                   <span>Alerts</span>
-                </NavLink>
-
-                <NavLink to="/connect-sensor">
-                  <Wifi size={18} />
-                  <span>Connect Sensor</span>
                 </NavLink>
 
                 <NavLink to="/profile">

@@ -1,11 +1,317 @@
 import { useEffect, useState } from 'react'
-import { useLogout } from "../hooks/useLogout"
+import { useAuthContext } from '../hooks/useAuthContext'
+import { User, Mail, Shield, Calendar, Lock, Edit2, Check, X } from 'lucide-react'
 
 const Profile = () => {
+  const { user } = useAuthContext()
 
-return(
-<div className="section-header">
-        <h2 className="page-title">Profile</h2>
-</div>
-)}
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+
+  // Profile edit state
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '' })
+  const [saving, setSaving] = useState(false)
+
+  // Password change state
+  const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [pwdError, setPwdError] = useState('')
+  const [pwdSaving, setPwdSaving] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/user/me', {
+          headers: { Authorization: `Bearer ${user.token}` }
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Failed to load profile')
+        setProfile(data)
+        setForm({
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          email: data.email || '',
+        })
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProfile()
+  }, [user])
+
+  const handleSaveProfile = async () => {
+    setSaving(true)
+    setError('')
+    setSuccessMessage('')
+    try {
+      const res = await fetch('/api/user/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update profile')
+      setProfile(data)
+      setEditing(false)
+      setSuccessMessage('Profile updated successfully')
+
+      // Update the auth context's stored user too (name shows in header/navbar)
+      const stored = JSON.parse(localStorage.getItem('user') || '{}')
+      const updated = { ...stored, firstName: data.firstName, lastName: data.lastName, email: data.email }
+      localStorage.setItem('user', JSON.stringify(updated))
+
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+    setPwdError('')
+    setSuccessMessage('')
+
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      setPwdError('New passwords do not match')
+      return
+    }
+    if (pwdForm.newPassword.length < 8) {
+      setPwdError('New password must be at least 8 characters')
+      return
+    }
+
+    setPwdSaving(true)
+    try {
+      const res = await fetch('/api/user/me/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: pwdForm.currentPassword,
+          newPassword: pwdForm.newPassword,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to change password')
+
+      setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setSuccessMessage('Password changed successfully')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (err) {
+      setPwdError(err.message)
+    } finally {
+      setPwdSaving(false)
+    }
+  }
+
+  if (loading) return <div className="dash-page"><p>Loading profile...</p></div>
+  if (!profile) return <div className="dash-page"><p style={{ color: 'red' }}>{error || 'Not signed in.'}</p></div>
+
+  const initials = `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase()
+  const joinedDate = profile.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      })
+    : 'Unknown'
+
+  return (
+    <div className="dash-page">
+      <div className="dash-header">
+        <div>
+          <h1 className="dash-title">Profile</h1>
+          <p className="dash-subtitle">Manage your account details and password.</p>
+        </div>
+      </div>
+
+      {successMessage && (
+        <div className="profile-success">{successMessage}</div>
+      )}
+      {error && !editing && (
+        <div className="profile-error">{error}</div>
+      )}
+
+      {/* Identity card */}
+      <div className="dash-section">
+        <div className="profile-identity">
+          <div className="profile-avatar">{initials || '?'}</div>
+          <div className="profile-identity-info">
+            <h2>{profile.firstName} {profile.lastName}</h2>
+            <p>{profile.email}</p>
+            <div className="profile-badges">
+              <span className={`profile-badge profile-badge-${profile.role}`}>
+                <Shield size={12} />
+                {profile.role}
+              </span>
+              <span className={`profile-badge profile-badge-status-${profile.status}`}>
+                {profile.status}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Profile info card */}
+      <div className="dash-section">
+        <div className="dash-section-head">
+          <h2>Account Information</h2>
+          {!editing && (
+            <button className="profile-edit-btn" onClick={() => setEditing(true)}>
+              <Edit2 size={14} />
+              Edit
+            </button>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="profile-form">
+            <ProfileField icon={<User size={16} />} label="First name">
+              <input
+                type="text"
+                value={form.firstName}
+                onChange={e => setForm({ ...form, firstName: e.target.value })}
+                className="profile-input"
+              />
+            </ProfileField>
+            <ProfileField icon={<User size={16} />} label="Last name">
+              <input
+                type="text"
+                value={form.lastName}
+                onChange={e => setForm({ ...form, lastName: e.target.value })}
+                className="profile-input"
+              />
+            </ProfileField>
+            <ProfileField icon={<Mail size={16} />} label="Email">
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                className="profile-input"
+              />
+            </ProfileField>
+
+            {error && <div className="profile-error">{error}</div>}
+
+            <div className="profile-actions">
+              <button
+                className="dash-action-btn"
+                disabled={saving}
+                onClick={() => {
+                  setEditing(false)
+                  setError('')
+                  setForm({
+                    firstName: profile.firstName,
+                    lastName: profile.lastName,
+                    email: profile.email,
+                  })
+                }}
+              >
+                <X size={16} />
+                Cancel
+              </button>
+              <button
+                className="profile-save-btn"
+                disabled={saving}
+                onClick={handleSaveProfile}
+              >
+                <Check size={16} />
+                {saving ? 'Saving...' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="profile-display">
+            <ProfileRow icon={<User size={16} />}    label="First name" value={profile.firstName} />
+            <ProfileRow icon={<User size={16} />}    label="Last name"  value={profile.lastName} />
+            <ProfileRow icon={<Mail size={16} />}    label="Email"      value={profile.email} />
+            <ProfileRow icon={<Shield size={16} />}  label="Role"       value={profile.role} />
+            <ProfileRow icon={<Calendar size={16} />} label="Joined"    value={joinedDate} />
+          </div>
+        )}
+      </div>
+
+      {/* Password change card */}
+      <div className="dash-section">
+        <div className="dash-section-head">
+          <h2>Change Password</h2>
+        </div>
+        <form className="profile-form" onSubmit={handleChangePassword}>
+          <ProfileField icon={<Lock size={16} />} label="Current password">
+            <input
+              type="password"
+              value={pwdForm.currentPassword}
+              onChange={e => setPwdForm({ ...pwdForm, currentPassword: e.target.value })}
+              className="profile-input"
+              required
+            />
+          </ProfileField>
+          <ProfileField icon={<Lock size={16} />} label="New password">
+            <input
+              type="password"
+              value={pwdForm.newPassword}
+              onChange={e => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
+              className="profile-input"
+              required
+              placeholder="Min 8 chars, mixed case, number, symbol"
+            />
+          </ProfileField>
+          <ProfileField icon={<Lock size={16} />} label="Confirm new password">
+            <input
+              type="password"
+              value={pwdForm.confirmPassword}
+              onChange={e => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
+              className="profile-input"
+              required
+            />
+          </ProfileField>
+
+          {pwdError && <div className="profile-error">{pwdError}</div>}
+
+          <div className="profile-actions">
+            <button
+              type="submit"
+              className="profile-save-btn"
+              disabled={pwdSaving}
+            >
+              {pwdSaving ? 'Updating...' : 'Change password'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ============ Sub-components ============
+const ProfileRow = ({ icon, label, value }) => (
+  <div className="profile-row">
+    <div className="profile-row-label">
+      <span className="profile-row-icon">{icon}</span>
+      {label}
+    </div>
+    <div className="profile-row-value">{value || '—'}</div>
+  </div>
+)
+
+const ProfileField = ({ icon, label, children }) => (
+  <div className="profile-field">
+    <label className="profile-row-label">
+      <span className="profile-row-icon">{icon}</span>
+      {label}
+    </label>
+    {children}
+  </div>
+)
+
 export default Profile
