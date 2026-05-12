@@ -1,6 +1,6 @@
 import { useLogin } from "../hooks/useLogin"
 import { useState } from 'react'
-import { Link } from 'react-router-dom'  // Add this import
+import { Link } from 'react-router-dom'
 
 const Login = () => {
     const [email, setEmail] = useState('')
@@ -17,23 +17,25 @@ const Login = () => {
             <h3>Log in</h3>
 
             <label>Email:</label>
-            <input 
+            <input
                 type="email"
                 onChange={(e) => setEmail(e.target.value)}
                 value={email}
             />
 
             <label>Password:</label>
-            <input 
+            <input
                 type="password"
                 onChange={(e) => setPassword(e.target.value)}
                 value={password}
             />
             <button disabled={isLoading}>Log in</button>
             {error && <div className="error">{error}</div>}
-            
-            {/* Link to Landing Page */}
+
             <div className="auth-footer">
+                <p>
+                    Don't have an account? <Link to="/signup">Sign up</Link>
+                </p>
                 <Link to="/landingpage" className="back-to-home">← Back to Landing Page</Link>
             </div>
         </form>

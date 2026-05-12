@@ -127,7 +127,7 @@ body {
   position: relative;
 }
 
-/* Parent (Configuration) */
+/* Parent (Configuration) — now a button, with chevron indicator */
 .sidebar-parent {
   display: flex;
   align-items: center;
@@ -138,6 +138,23 @@ body {
   color: #444;
   font-size: 14px;
   transition: 0.2s;
+  /* Reset button defaults */
+  width: 100%;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+}
+
+/* Chevron rotates when submenu is open */
+.sidebar-chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  color: #94a3b8;
+}
+
+.sidebar-group.open .sidebar-chevron {
+  transform: rotate(180deg);
 }
 
 .sidebar-parent:hover {
@@ -160,9 +177,9 @@ body {
   opacity: 0;
 }
 
-/* show submenu on hover */
-.sidebar-group:hover .sidebar-submenu-wrapper {
-  max-height: 200px; /* adjust if needed */
+/* show submenu when toggled open */
+.sidebar-group.open .sidebar-submenu-wrapper {
+  max-height: 200px;
   opacity: 1;
 }
 
@@ -188,12 +205,6 @@ body {
   background: #e9eefc;
   color: #3b5bfd;
 }
-.sidebar-group:hover .sidebar-submenu-wrapper,
-.sidebar-submenu-wrapper:hover {
-  max-height: 200px;
-  opacity: 1;
-}
-
 .sidebar-group.active-parent .sidebar-submenu-wrapper {
   max-height: 200px;
   opacity: 1;
@@ -3030,3 +3041,4 @@ input, select {
   letter-spacing: 0.5px;
   margin-top: 2px;
 }
+

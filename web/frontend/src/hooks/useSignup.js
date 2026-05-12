@@ -6,14 +6,15 @@ export const useSignup = () => {
     const [isLoading, setIsLoading] = useState(null)
     const {dispatch}= useAuthContext()
 
-    const signup = async(email, password,firstName,lastName,role) =>{ 
+    const signup = async (email, password, firstName, lastName) => {
         setIsLoading(true)
         setError(null)
 
+        // Backend assigns role automatically: first account → admin, everyone else → staff.
         const response = await fetch('/api/user/signup', {
             method:'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email,password,firstName,lastName,role})
+            body: JSON.stringify({ email, password, firstName, lastName })
         })
         const json = await response.json()
 

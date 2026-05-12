@@ -17,10 +17,11 @@ import {
   UserCircle,
   ClipboardList,
   Video,
-  LogIn, 
+  LogIn,
   UserPlus,
-  Gauge, 
-  Megaphone
+  Gauge,
+  Megaphone,
+  ChevronDown,
 } from 'lucide-react'
 
 // Import the logo
@@ -35,7 +36,18 @@ const Navbar = () => {
     }
 
   const location = useLocation()
-  const isConfigActive = location.pathname.startsWith('/configuration')
+  // Only highlight the Configuration parent when the user is actually on a
+  // settings page (Thresholds). The Bulletin Board URL still lives under
+  // /configuration/ for now but is a top-level sidebar item, so we exclude it.
+  const isConfigActive = location.pathname.startsWith('/configuration/Thresholds')
+
+  // Toggle state for the Configuration submenu.
+  // Auto-opens when the user is currently on a config sub-route.
+  const [configOpen, setConfigOpen] = useState(isConfigActive)
+
+  useEffect(() => {
+    if (isConfigActive) setConfigOpen(true)
+  }, [isConfigActive])
 
   return (
     <div className="sidebar">
@@ -67,22 +79,31 @@ const Navbar = () => {
                     <span>Classroom Records</span>
                     </NavLink>
 
-                    <div className={`sidebar-group ${isConfigActive ? 'active-parent' : ''}`}>
-                      <div className="sidebar-parent">
+                    <NavLink to="/configuration/WebBulletinBoard">
+                      <Megaphone size={18} />
+                      <span>Bulletin Board</span>
+                    </NavLink>
+
+                    <div className={`sidebar-group ${isConfigActive ? 'active-parent' : ''} ${configOpen ? 'open' : ''}`}>
+                      <button
+                        type="button"
+                        className="sidebar-parent"
+                        onClick={() => setConfigOpen(o => !o)}
+                        aria-expanded={configOpen}
+                      >
                         <Settings size={18} />
                         <span>Configuration</span>
-                      </div>
+                        <ChevronDown
+                          size={16}
+                          className="sidebar-chevron"
+                        />
+                      </button>
 
                       <div className="sidebar-submenu-wrapper">
                         <div className="sidebar-submenu">
                           <NavLink to="/configuration/Thresholds">
                             <Gauge size={16} />
                             <span>Thresholds</span>
-                          </NavLink>
-
-                          <NavLink to="/configuration/WebBulletinBoard">
-                            <Megaphone size={16} />
-                            <span>Bulletin Board</span>
                           </NavLink>
                         </div>
                       </div>
