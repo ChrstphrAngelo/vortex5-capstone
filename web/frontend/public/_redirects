@@ -1,0 +1,11 @@
+# Render rewrite rules — applied in order, first match wins.
+# 200 = rewrite (URL stays the same in the browser); 301/302 = redirect.
+
+# Proxy API calls to the backend on Render
+/api/*  https://vortex5-capstone.onrender.com/api/:splat  200
+
+# Proxy uploaded media (video files, etc.)
+/uploads/*  https://vortex5-capstone.onrender.com/uploads/:splat  200
+
+# SPA fallback — every other path should serve index.html so React Router takes over.
+/*  /index.html  200

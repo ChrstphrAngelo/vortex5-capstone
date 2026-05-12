@@ -1,316 +1,306 @@
-// BulletinBoard.jsx
+// BulletinBoard.jsx — kiosk-style display: animation in the middle,
+// news/announcements + AQI preview on the right, scrolling ticker at the bottom.
 import { useEffect, useState, useRef } from 'react'
-import AqiDetails from '../components/AqiDetails'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper } from 'lucide-react'
+import bewAirLogo from '../assets/bewAirLogo.png'
+
+const CATEGORY_COLORS = {
+  'Good': '#16a34a',
+  'Moderate': '#f59e0b',
+  'Unhealthy (SG)': '#ea580c',
+  'Unhealthy': '#dc2626',
+  'Very Unhealthy': '#9333ea',
+  'Hazardous': '#7f1d1d',
+}
+
+function aqiCategory(aqi) {
+  if (aqi == null) return null
+  if (aqi <= 50)  return 'Good'
+  if (aqi <= 100) return 'Moderate'
+  if (aqi <= 150) return 'Unhealthy (SG)'
+  if (aqi <= 200) return 'Unhealthy'
+  if (aqi <= 300) return 'Very Unhealthy'
+  return 'Hazardous'
+}
 
 const BulletinBoard = () => {
   const { user } = useAuthContext()
-  // State for videos (slideshow)
+
   const [mediaList, setMediaList] = useState([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(true)
   const videoRef = useRef(null)
   const boardRef = useRef(null)
 
-  // State for announcements
   const [announcements, setAnnouncements] = useState([])
-  const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0)
-
-  // State for AQI
   const [aqiData, setAqiData] = useState(null)
-
-  // State for current time
   const [currentTime, setCurrentTime] = useState(new Date())
-
-  // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Long message as scrolling ticker
-  const [longMessage, setLongMessage] = useState("🌿 Welcome to the Environmental Bulletin Board System • Stay informed about air quality • Watch educational videos • Read important announcements • Real-time AQI monitoring • Together for a better future • ")
-
-  // Fetch media
+  // ---------- Fetch media ----------
   useEffect(() => {
     const fetchMedia = async () => {
       try {
         const res = await fetch('/api/media')
         const json = await res.json()
-        if (res.ok && json.length > 0) {
-          setMediaList(json)
-        }
-      } catch (error) {
-        console.error('Error fetching media:', error)
-      }
+        if (res.ok && json.length > 0) setMediaList(json)
+      } catch (err) { console.error('media:', err) }
     }
     fetchMedia()
   }, [])
 
-  // Fetch announcements
+  // ---------- Fetch announcements ----------
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
         const res = await fetch('/api/announcements')
         const json = await res.json()
-        if (res.ok) {
-          setAnnouncements(json)
-        }
-      } catch (error) {
-        console.error('Error fetching announcements:', error)
-      }
+        if (res.ok) setAnnouncements(json)
+      } catch (err) { console.error('announcements:', err) }
     }
     fetchAnnouncements()
+    const interval = setInterval(fetchAnnouncements, 60000)
+    return () => clearInterval(interval)
   }, [])
 
-  // Fetch latest AQI data
+  // ---------- Fetch latest AQI ----------
   useEffect(() => {
+    if (!user) return
     const fetchAqi = async () => {
       try {
-        const res = await fetch('/api/aqi', user ? { headers: { 'Authorization': `Bearer ${user.token}` } } : {})
+        const res = await fetch('/api/aqi/latest', {
+          headers: { Authorization: `Bearer ${user.token}` }
+        })
         const json = await res.json()
-        if (res.ok && json.length > 0) {
-          const latest = json.reduce((latest, current) =>
-            new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
+        if (res.ok && Array.isArray(json) && json.length > 0) {
+          // Pick the most recently created reading
+          const latest = json.reduce((a, b) =>
+            new Date(b.createdAt) > new Date(a.createdAt) ? b : a
           )
           setAqiData(latest)
         }
-      } catch (error) {
-        console.error('Error fetching AQI:', error)
-      }
+      } catch (err) { console.error('aqi:', err) }
     }
     fetchAqi()
-    const interval = setInterval(fetchAqi, 30000)
+    const interval = setInterval(fetchAqi, 15000)
     return () => clearInterval(interval)
-  }, [])
+  }, [user])
 
-  // Update current time every second
+  // ---------- Tick clock ----------
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
 
-  // Rotate announcements every 5 seconds
+  // ---------- Fullscreen ----------
   useEffect(() => {
-    if (announcements.length <= 1) return
-    const interval = setInterval(() => {
-      setCurrentAnnouncementIndex(prev => (prev + 1) % announcements.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [announcements.length])
-
-  // Handle video ended event
-  const handleVideoEnded = () => {
-    if (mediaList.length > 0 && isPlaying) {
-      setCurrentVideoIndex(prev => (prev + 1) % mediaList.length)
-    }
-  }
-
-  const handlePlay = () => {
-    setIsPlaying(true)
-    if (videoRef.current) {
-      videoRef.current.play()
-    }
-  }
-
-  const handlePause = () => {
-    setIsPlaying(false)
-    if (videoRef.current) {
-      videoRef.current.pause()
-    }
-  }
-
-  const enterFullscreen = () => {
-    const element = boardRef.current
-    if (element) {
-      if (element.requestFullscreen) {
-        element.requestFullscreen()
-      } else if (element.webkitRequestFullscreen) {
-        element.webkitRequestFullscreen()
-      } else if (element.msRequestFullscreen) {
-        element.msRequestFullscreen()
-      }
-    }
-  }
-
-  const exitFullscreen = () => {
-    if (document.exitFullscreen) {
-      document.exitFullscreen()
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen()
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen()
-    }
-  }
-
-  const toggleFullscreen = () => {
-    if (!isFullscreen) {
-      enterFullscreen()
-    } else {
-      exitFullscreen()
-    }
-  }
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
-    document.addEventListener('msfullscreenchange', handleFullscreenChange)
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
-      document.removeEventListener('msfullscreenchange', handleFullscreenChange)
-    }
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
   }, [])
 
-  const formatTime = () => {
-    return currentTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      boardRef.current?.requestFullscreen?.()
+    } else {
+      document.exitFullscreen?.()
+    }
+  }
+
+  // ---------- Video controls ----------
+  const handleVideoEnded = () => {
+    if (mediaList.length > 0 && isPlaying) {
+      setCurrentVideoIndex(i => (i + 1) % mediaList.length)
+    }
+  }
+  const togglePlay = () => {
+    setIsPlaying(p => {
+      const next = !p
+      if (videoRef.current) {
+        next ? videoRef.current.play() : videoRef.current.pause()
+      }
+      return next
     })
   }
 
-  const formatDate = () => {
-    return currentTime.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
+  // ---------- Helpers ----------
+  const formatTime = () => currentTime.toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', hour12: true
+  })
+  const formatDate = () => currentTime.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric'
+  })
   const getVideoUrl = (videoUrl) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'https://vortex5-capstone.onrender.com'
-    return `${baseUrl}${videoUrl}`
+    const base = import.meta.env.VITE_API_URL || 'https://vortex5-capstone.onrender.com'
+    return `${base}${videoUrl}`
   }
 
   const hasVideos = mediaList.length > 0
   const currentVideo = hasVideos ? mediaList[currentVideoIndex] : null
-  const currentAnnouncement = announcements.length > 0 ? announcements[currentAnnouncementIndex] : null
+
+  // Build the ticker text from announcements + a live AQI snippet.
+  const tickerSegments = []
+  if (aqiData) {
+    const cat = aqiCategory(aqiData.Aqi)
+    tickerSegments.push(`Air quality: AQI ${aqiData.Aqi} (${cat})`)
+  }
+  announcements.forEach(a => {
+    if (a?.title) tickerSegments.push(a.title)
+  })
+  if (tickerSegments.length === 0) {
+    tickerSegments.push('Welcome to BewAir — School Air Quality Monitor')
+  }
+  const tickerText = tickerSegments.join('  •  ') + '  •  '
 
   return (
-    <div className="bulletin-board-container">
-      {/* Control Bar */}
-      <div className="bb-control-bar">
-        <div className="control-group">
-          {isPlaying ? (
-            <button className="control-btn" onClick={handlePause}>
-              ⏸ Pause
-            </button>
-          ) : (
-            <button className="control-btn play-btn" onClick={handlePlay}>
-              ▶ Play
-            </button>
-          )}
-          <button className="control-btn fullscreen-btn" onClick={toggleFullscreen}>
-            ⛶ Fullscreen
+    <div className={`kiosk-root ${isFullscreen ? 'kiosk-fullscreen' : ''}`} ref={boardRef}>
+      {/* Mini control bar — only visible when NOT fullscreen */}
+      {!isFullscreen && (
+        <div className="kiosk-controls">
+          <button className="kiosk-ctrl-btn" onClick={togglePlay}>
+            {isPlaying ? <><Pause size={14}/> Pause</> : <><Play size={14}/> Play</>}
           </button>
+          <button className="kiosk-ctrl-btn" onClick={toggleFullscreen}>
+            <Maximize2 size={14}/> Fullscreen
+          </button>
+          {hasVideos && (
+            <span className="kiosk-ctrl-status">
+              Video {currentVideoIndex + 1} of {mediaList.length}
+            </span>
+          )}
         </div>
-        <div className="video-status">
-          {hasVideos && <span>Video {currentVideoIndex + 1} of {mediaList.length}</span>}
+      )}
+
+      {isFullscreen && (
+        <button className="kiosk-exit-fs" onClick={toggleFullscreen}>
+          <Minimize2 size={16}/> Exit Fullscreen
+        </button>
+      )}
+
+      {/* === Top header bar === */}
+      <div className="kiosk-header">
+        <div className="kiosk-brand">
+          <img src={bewAirLogo} alt="BewAir" />
+          <span>BewAir</span>
+        </div>
+        <div className="kiosk-clock">
+          <div className="kiosk-time">{formatTime()}</div>
+          <div className="kiosk-date">{formatDate()}</div>
         </div>
       </div>
 
-      {/* Bulletin Board - EXACTLY FOLLOWING YOUR LAYOUT IMAGE */}
-      <div className={`bulletin-board ${isFullscreen ? 'fullscreen-mode' : ''}`} ref={boardRef}>
-        {isFullscreen && (
-          <button className="exit-fullscreen-btn" onClick={toggleFullscreen}>
-            ✕ Exit Fullscreen
-          </button>
-        )}
-
-        {/* LEFT COLUMN - Video (BIGGER) + TIME + LONG MESSAGE below it */}
-        <div className="bb-left">
-          {/* Video Section - BIGGER */}
-          <div className="bb-card video-card">
-            <h2 className="bb-title">Animations</h2>
-            <div className="video-wrapper">
-              {hasVideos ? (
-                <video
-                  key={currentVideo._id}
-                  ref={videoRef}
-                  src={getVideoUrl(currentVideo.videoUrl)}
-                  className="bb-video"
-                  autoPlay={isPlaying}
-                  onEnded={handleVideoEnded}
-                  controls={false}
-                  playsInline
-                />
-              ) : (
-                <div className="video-placeholder">
-                  <p>No videos available</p>
-                </div>
+      {/* === Main area === */}
+      <div className="kiosk-main">
+        {/* LEFT: animation */}
+        <div className="kiosk-stage">
+          {hasVideos ? (
+            <>
+              <video
+                key={currentVideo._id}
+                ref={videoRef}
+                src={getVideoUrl(currentVideo.videoUrl)}
+                className="kiosk-video"
+                autoPlay={isPlaying}
+                onEnded={handleVideoEnded}
+                playsInline
+                muted
+              />
+              {currentVideo.title && (
+                <div className="kiosk-video-caption">{currentVideo.title}</div>
               )}
+            </>
+          ) : (
+            <div className="kiosk-stage-placeholder">
+              <img src={bewAirLogo} alt="" />
+              <p>No animations available</p>
             </div>
-            {hasVideos && <div className="video-title">{currentVideo.title}</div>}
-          </div>
-
-          {/* TIME and LONG MESSAGE side by side BELOW the video */}
-          <div className="bb-bottom-row-left">
-            <div className="time-card">
-              <h2 className="bb-title">TIME</h2>
-              <div className="time-display">
-                <div className="current-time">{formatTime()}</div>
-                <div className="current-date">{formatDate()}</div>
-              </div>
-            </div>
-
-            <div className="ticker-card">
-              <h2 className="bb-title">LONG MESSAGE</h2>
-              <div className="ticker-container">
-                <div className="ticker-content">
-                  {longMessage}
-                  {longMessage}
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* RIGHT COLUMN - Announcements and AQI */}
-        <div className="bb-right">
-          {/* ANNOUNCEMENTS */}
-          <div className="bb-card announcements-card">
-            <h2 className="bb-title">ANNOUNCEMENTS</h2>
-            <div className="announcements-content">
-              {announcements.length > 0 ? (
-                <>
-                  <h3 className="announcement-title">{currentAnnouncement?.title}</h3>
-                  <div className="announcement-meta">
-                    {currentAnnouncement?.date && <span>📅 {currentAnnouncement.date}</span>}
-                    {currentAnnouncement?.time && <span>🕐 {currentAnnouncement.time}</span>}
-                  </div>
-                  {currentAnnouncement?.description && (
-                    <p className="announcement-description">{currentAnnouncement.description}</p>
-                  )}
-                  {announcements.length > 1 && (
-                    <div className="announcement-dots">
-                      {announcements.map((_, idx) => (
-                        <span key={idx} className={`dot ${idx === currentAnnouncementIndex ? 'active' : ''}`} />
-                      ))}
-                    </div>
-                  )}
-                </>
+        {/* RIGHT: news + AQI */}
+        <aside className="kiosk-sidebar">
+          <div className="kiosk-section kiosk-news">
+            <header className="kiosk-section-head news-head">
+              <Newspaper size={16} />
+              NEWS &amp; EVENTS
+            </header>
+            <div className="kiosk-news-list">
+              {announcements.length === 0 ? (
+                <div className="kiosk-empty">No announcements yet</div>
               ) : (
-                <p className="empty-message">No announcements available</p>
+                announcements.slice(0, 4).map((a, i) => (
+                  <div key={a._id || i} className="kiosk-news-row">
+                    <div className="kiosk-news-date">
+                      <CalendarDays size={14} />
+                      <span>{a.date || formatDate()}</span>
+                    </div>
+                    <div className="kiosk-news-body">
+                      <div className="kiosk-news-title">{a.title}</div>
+                      {a.description && (
+                        <div className="kiosk-news-desc">{a.description}</div>
+                      )}
+                      {a.time && <div className="kiosk-news-time">{a.time}</div>}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
 
-          {/* AQI DISPLAY */}
-          <div className="bb-card aqi-card-right">
-            <h2 className="bb-title">AQI DISPLAY</h2>
-            <div className="aqi-content">
-              {aqiData ? (
-                <AqiDetails aqi={aqiData} />
-              ) : (
-                <p className="empty-message">Waiting for AQI data...</p>
-              )}
-            </div>
+          <div className="kiosk-section kiosk-aqi-preview">
+            <header className="kiosk-section-head aqi-head">
+              AIR QUALITY
+            </header>
+            {aqiData ? (
+              <AqiPreview aqi={aqiData} />
+            ) : (
+              <div className="kiosk-empty">Waiting for sensor data...</div>
+            )}
           </div>
+        </aside>
+      </div>
+
+      {/* === Bottom ticker === */}
+      <div className="kiosk-ticker">
+        <div className="kiosk-ticker-track" key={tickerText}>
+          <span className="kiosk-ticker-text">{tickerText.repeat(3)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ===== AQI Preview (right sidebar bottom) =====
+const AqiPreview = ({ aqi }) => {
+  const category = aqiCategory(aqi.Aqi)
+  const color = CATEGORY_COLORS[category] || '#94a3b8'
+  return (
+    <div className="kiosk-aqi-body">
+      <div className="kiosk-aqi-number" style={{ color }}>{aqi.Aqi ?? '--'}</div>
+      <div className="kiosk-aqi-cat" style={{ color }}>{category || 'No data'}</div>
+      <div className="kiosk-aqi-metrics">
+        <div className="kiosk-aqi-metric">
+          <span>PM 2.5</span>
+          <strong>{aqi.PM25 ?? '--'} <small>µg/m³</small></strong>
+        </div>
+        <div className="kiosk-aqi-metric">
+          <span>CO₂</span>
+          <strong>{aqi.CO2 ?? '--'} <small>ppm</small></strong>
+        </div>
+        <div className="kiosk-aqi-metric">
+          <span>Temp</span>
+          <strong>
+            {aqi.Temperature != null ? aqi.Temperature.toFixed(1) : '--'}
+            <small>°C</small>
+          </strong>
+        </div>
+        <div className="kiosk-aqi-metric">
+          <span>Humidity</span>
+          <strong>
+            {aqi.Humidity != null ? aqi.Humidity.toFixed(1) : '--'}
+            <small>%</small>
+          </strong>
         </div>
       </div>
     </div>

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useCachedFetch, invalidateCache } from '../hooks/useCachedFetch'
 import { User, Mail, Shield, Calendar, Lock, Edit2, Check, X } from 'lucide-react'
 
 const Profile = () => {
   const { user } = useAuthContext()
 
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Cached fetch — shows previous profile instantly on revisit, refreshes in bg.
+  const { data: profile, loading, error: fetchError } =
+    useCachedFetch(user ? '/api/user/me' : null, user?.token)
+
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
@@ -20,29 +23,21 @@ const Profile = () => {
   const [pwdError, setPwdError] = useState('')
   const [pwdSaving, setPwdSaving] = useState(false)
 
+  // Initialize the edit form whenever profile data becomes available.
   useEffect(() => {
-    if (!user) return
-    const fetchProfile = async () => {
-      try {
-        const res = await fetch('/api/user/me', {
-          headers: { Authorization: `Bearer ${user.token}` }
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Failed to load profile')
-        setProfile(data)
-        setForm({
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-          email: data.email || '',
-        })
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
+    if (profile) {
+      setForm({
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        email: profile.email || '',
+      })
     }
-    fetchProfile()
-  }, [user])
+  }, [profile])
+
+  // Surface fetch errors to the same error slot the edit form uses.
+  useEffect(() => {
+    if (fetchError) setError(fetchError)
+  }, [fetchError])
 
   const handleSaveProfile = async () => {
     setSaving(true)
@@ -59,7 +54,9 @@ const Profile = () => {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to update profile')
-      setProfile(data)
+      // Profile is read-only state from the cached fetch — invalidate so next
+      // load (or background refetch) pulls the new server-side data.
+      invalidateCache('/api/user/me')
       setEditing(false)
       setSuccessMessage('Profile updated successfully')
 
@@ -116,7 +113,8 @@ const Profile = () => {
     }
   }
 
-  if (loading) return <div className="dash-page"><p>Loading profile...</p></div>
+  // Only show the loading screen on the very first visit (no cached data yet).
+  if (loading && !profile) return <div className="dash-page"><p>Loading profile...</p></div>
   if (!profile) return <div className="dash-page"><p style={{ color: 'red' }}>{error || 'Not signed in.'}</p></div>
 
   const initials = `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase()

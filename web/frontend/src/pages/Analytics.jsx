@@ -152,34 +152,47 @@ const Analytics = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ p: 2 }}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          flexWrap="wrap"
-          gap={2}
-          sx={{ mb: 2 }}
+        <Box
+          sx={{
+            display: 'flex',
+            width: '100%',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 2,
+            mb: 2,
+          }}
         >
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
             Analytics
           </Typography>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            {lastUpdated && (
-              <Stack direction="row" alignItems="center" spacing={0.7}>
-                <Box
-                  sx={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    bgcolor: liveMode ? '#22C55E' : '#94A3B8',
-                    boxShadow: liveMode ? '0 0 0 4px rgba(34,197,94,0.18)' : 'none',
-                  }}
-                />
-                <Typography variant="caption" color="text.secondary">
-                  {liveMode ? 'Live · ' : 'Paused · '}
-                  Last updated {dayjs(lastUpdated).format('HH:mm:ss')}
-                </Typography>
-              </Stack>
-            )}
+
+          {/* Right side — live indicator pill containing toggle + timestamp */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              padding: '6px 14px',
+              background: 'white',
+              border: '1px solid #e2e8f0',
+              borderRadius: '999px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            }}
+          >
+            <Box
+              sx={{
+                width: 8, height: 8, borderRadius: '50%',
+                bgcolor: liveMode ? '#22C55E' : '#94A3B8',
+                boxShadow: liveMode ? '0 0 0 4px rgba(34,197,94,0.18)' : 'none',
+              }}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+              {liveMode ? 'Live' : 'Paused'}
+              {lastUpdated && ` · Updated ${dayjs(lastUpdated).format('HH:mm:ss')}`}
+            </Typography>
             <FormControlLabel
+              sx={{ ml: 0.5, mr: -0.5 }}
               control={
                 <Switch
                   size="small"
@@ -187,14 +200,14 @@ const Analytics = () => {
                   onChange={(e) => {
                     const on = e.target.checked
                     setLiveMode(on)
-                    if (on) setTo(dayjs()) // jump 'to' back to now when turning live mode on
+                    if (on) setTo(dayjs())
                   }}
                 />
               }
-              label="Live"
+              label=""
             />
-          </Stack>
-        </Stack>
+          </Box>
+        </Box>
 
         {/* ============ FILTER BAR ============ */}
         <Card sx={{ mb: 2 }}>

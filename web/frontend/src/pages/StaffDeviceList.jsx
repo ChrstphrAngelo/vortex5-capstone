@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useCachedFetch } from '../hooks/useCachedFetch'
 
 const CATEGORY_COLORS = {
   'Good': '#16a34a',
@@ -31,36 +32,20 @@ const StaffDeviceList = () => {
   const { user } = useAuthContext()
   const navigate = useNavigate()
 
-  const [devices, setDevices] = useState([])
-  const [readings, setReadings] = useState({})
-  const [loading, setLoading] = useState(true)
+  const { data: devices, loading: devLoading } = useCachedFetch(
+    user ? '/api/device' : null, user?.token, { pollInterval: 10000 }
+  )
+  const { data: readingsList } = useCachedFetch(
+    user ? '/api/aqi/latest' : null, user?.token, { pollInterval: 10000 }
+  )
 
-  useEffect(() => {
-    if (!user) return
+  const readings = useMemo(() => {
+    const list = readingsList || []
+    return Object.fromEntries(list.map(r => [r.deviceId, r]))
+  }, [readingsList])
 
-    const fetchData = async () => {
-      try {
-        const [devRes, aqiRes] = await Promise.all([
-          fetch('/api/device',     { headers: { Authorization: `Bearer ${user.token}` } }),
-          fetch('/api/aqi/latest', { headers: { Authorization: `Bearer ${user.token}` } }),
-        ])
-        if (devRes.ok) setDevices(await devRes.json())
-        if (aqiRes.ok) {
-          const list = await aqiRes.json()
-          const map = Object.fromEntries(list.map(r => [r.deviceId, r]))
-          setReadings(map)
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-    const interval = setInterval(fetchData, 10000)
-    return () => clearInterval(interval)
-  }, [user])
-
-  if (loading) return <div className="dash-page"><p>Loading your devices...</p></div>
+  // Only show the loading screen on the very first visit, when there's no cached data.
+  if (devLoading && !devices) return <div className="dash-page"><p>Loading your devices...</p></div>
 
   return (
     <div className="dash-page">
@@ -73,13 +58,13 @@ const StaffDeviceList = () => {
         </div>
       </div>
 
-      {devices.length === 0 ? (
+      {(devices || []).length === 0 ? (
         <div className="dash-empty">
           You don't have any devices yet. Ask your admin to share a sensor with your account.
         </div>
       ) : (
         <div className="dash-device-grid">
-          {devices.map(d => {
+          {(devices || []).map(d => {
             const now = Date.now()
             const lastSeen = d.lastSeen ? new Date(d.lastSeen).getTime() : 0
             const isOnline = d.status === 'online' && (now - lastSeen) < 30 * 1000

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useCachedFetch } from '../hooks/useCachedFetch'
 import { Bell, AlertTriangle, History } from 'lucide-react'
 
 const FIELD_LABELS = {
@@ -19,31 +20,19 @@ const AlertsAndNotifications = () => {
   const navigate = useNavigate()
 
   const [tab, setTab] = useState('current') // 'current' | 'history'
-  const [current, setCurrent] = useState([])
-  const [history, setHistory] = useState([])
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (!user) return
+  const { data: currentData, loading: curLoading } = useCachedFetch(
+    user ? '/api/alerts/current' : null, user?.token, { pollInterval: 15000 }
+  )
+  const { data: historyData } = useCachedFetch(
+    user ? '/api/alerts/history?days=7' : null, user?.token, { pollInterval: 15000 }
+  )
 
-    const fetchData = async () => {
-      try {
-        const [curRes, histRes] = await Promise.all([
-          fetch('/api/alerts/current', { headers: { Authorization: `Bearer ${user.token}` } }),
-          fetch('/api/alerts/history?days=7', { headers: { Authorization: `Bearer ${user.token}` } }),
-        ])
-        if (curRes.ok)  setCurrent(await curRes.json())
-        if (histRes.ok) setHistory(await histRes.json())
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-    const interval = setInterval(fetchData, 15000)
-    return () => clearInterval(interval)
-  }, [user])
+  const current = currentData || []
+  const history = historyData || []
 
-  if (loading) return <div className="dash-page"><p>Loading alerts...</p></div>
+  // Only block on the very first visit while we have nothing to show.
+  if (curLoading && !currentData) return <div className="dash-page"><p>Loading alerts...</p></div>
 
   return (
     <div className="dash-page">

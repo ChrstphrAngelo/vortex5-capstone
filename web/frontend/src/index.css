@@ -3042,3 +3042,464 @@ input, select {
   margin-top: 2px;
 }
 
+/* =========================================================================
+   KIOSK BULLETIN BOARD — display-wall layout
+   Header (clock) + animation (left) + news/aqi sidebar (right) + ticker
+   ========================================================================= */
+
+.kiosk-root {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 80px);
+  background: #f3f4f6;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.kiosk-fullscreen {
+  border-radius: 0;
+  min-height: 100vh;
+}
+
+/* ---- Mini control bar (above the board, only when not fullscreen) ---- */
+.kiosk-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.kiosk-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.kiosk-ctrl-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.kiosk-ctrl-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.kiosk-exit-fs {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, 0.85);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 2100;
+}
+
+/* ---- Header (clock + brand) ---- */
+.kiosk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  background: linear-gradient(135deg, #1e88ff 0%, #18a957 100%);
+  color: white;
+}
+
+.kiosk-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kiosk-brand img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.kiosk-brand span {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.kiosk-clock {
+  text-align: right;
+}
+
+.kiosk-time {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.kiosk-date {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ---- Main area: 2-column grid ---- */
+.kiosk-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 16px;
+  padding: 16px;
+  min-height: 0;
+}
+
+@media (max-width: 1024px) {
+  .kiosk-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Stage (left side — animation) ---- */
+.kiosk-stage {
+  position: relative;
+  background: #0f172a;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+}
+
+.kiosk-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-height: 70vh;
+}
+
+.kiosk-video-caption {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  padding: 6px 14px;
+  background: rgba(15, 23, 42, 0.75);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+.kiosk-stage-placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+.kiosk-stage-placeholder img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 12px;
+  opacity: 0.6;
+  filter: brightness(0) invert(1);
+}
+
+.kiosk-stage-placeholder p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ---- Sidebar (right column) ---- */
+.kiosk-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.kiosk-section {
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+.kiosk-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  color: white;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.news-head {
+  background: #ea580c;
+}
+
+.aqi-head {
+  background: #1e88ff;
+}
+
+.kiosk-empty {
+  padding: 18px 16px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* ---- News list ---- */
+.kiosk-news {
+  flex: 1;
+  min-height: 0;
+}
+
+.kiosk-news-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 380px;
+}
+
+.kiosk-news-row {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.kiosk-news-row:last-child {
+  border-bottom: none;
+}
+
+.kiosk-news-date {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 56px;
+  padding: 6px 4px;
+  background: #fff7ed;
+  border-radius: 8px;
+  color: #ea580c;
+}
+
+.kiosk-news-date span {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.kiosk-news-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.kiosk-news-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.kiosk-news-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kiosk-news-time {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* ---- AQI preview ---- */
+.kiosk-aqi-body {
+  padding: 14px 16px 16px;
+  text-align: center;
+}
+
+.kiosk-aqi-number {
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.kiosk-aqi-cat {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.kiosk-aqi-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.kiosk-aqi-metric {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.kiosk-aqi-metric span {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kiosk-aqi-metric strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.kiosk-aqi-metric strong small {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-left: 2px;
+}
+
+/* ---- Bottom ticker ---- */
+.kiosk-ticker {
+  background: #ea580c;
+  color: white;
+  overflow: hidden;
+  position: relative;
+  padding: 12px 0;
+  border-top: 3px solid #c2410c;
+}
+
+.kiosk-ticker-track {
+  display: flex;
+  white-space: nowrap;
+  animation: kiosk-ticker-scroll 50s linear infinite;
+}
+
+.kiosk-ticker-text {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding-right: 40px;
+}
+
+@keyframes kiosk-ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-33.333%); }
+}
+
+/* Pause ticker on hover so users can read it */
+.kiosk-ticker:hover .kiosk-ticker-track {
+  animation-play-state: paused;
+}
+
+/* =========================================================================
+   ANIMATION VIEWER (standalone) — single video stage + fullscreen + arrows
+   ========================================================================= */
+
+.anim-stage {
+  position: relative;
+  background: #0f172a;
+  border-radius: 14px;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.anim-stage-fs {
+  border-radius: 0;
+  aspect-ratio: auto;
+  width: 100vw;
+  height: 100vh;
+}
+
+.anim-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: black;
+}
+
+.anim-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  z-index: 5;
+}
+
+.anim-nav:hover {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.anim-nav-prev { left: 16px; }
+.anim-nav-next { right: 16px; }
+
+/* ---- Fullscreen tweaks ---- */
+.kiosk-fullscreen .kiosk-time {
+  font-size: 48px;
+}
+
+.kiosk-fullscreen .kiosk-aqi-number {
+  font-size: 80px;
+}
+
+.kiosk-fullscreen .kiosk-ticker-text {
+  font-size: 22px;
+}
+
