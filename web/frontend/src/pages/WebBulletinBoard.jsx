@@ -23,20 +23,32 @@ const WebBulletinBoard = () => {
     }
 
     const handleUpload = async () => {
+  if (!videoFile) {
+    alert('Please choose a video file first.')
+    return
+  }
+
   const formData = new FormData()
-  formData.append('title', 'videoFile.name')
+  formData.append('title', videoFile.name)
   formData.append('video', videoFile)
 
-  const res = await fetch('/api/media', {
-    method: 'POST',
-    body: formData
-  })
+  try {
+    const res = await fetch('/api/media', {
+      method: 'POST',
+      body: formData
+    })
 
-  const json = await res.json()
+    const json = await res.json()
 
-  if (res.ok) {
-    setMediaList(prev => [json, ...prev])
-    setVideoFile(null)
+    if (res.ok) {
+      setMediaList(prev => [json, ...prev])
+      setVideoFile(null)
+      alert(`Uploaded "${videoFile.name}" successfully.`)
+    } else {
+      alert(`Upload failed: ${json.error || 'Unknown error'}`)
+    }
+  } catch (err) {
+    alert(`Upload failed: ${err.message}`)
   }
 }
 const [showMediaModal, setShowMediaModal] = useState(false)
