@@ -2,7 +2,7 @@
 // news/announcements + AQI preview on the right, scrolling ticker at the bottom.
 import { useEffect, useState, useRef } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
-import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper } from 'lucide-react'
+import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft, ChevronRight } from 'lucide-react'
 import bewAirLogo from '../assets/bewAirLogo.png'
 
 const CATEGORY_COLORS = {
@@ -123,6 +123,18 @@ const BulletinBoard = () => {
       return next
     })
   }
+  const goPrev = () => {
+    if (mediaList.length === 0) return
+    setCurrentVideoIndex(i => (i - 1 + mediaList.length) % mediaList.length)
+  }
+  const goNext = () => {
+    if (mediaList.length === 0) return
+    setCurrentVideoIndex(i => (i + 1) % mediaList.length)
+  }
+  const selectVideo = (index) => {
+    if (index < 0 || index >= mediaList.length) return
+    setCurrentVideoIndex(index)
+  }
 
   // ---------- Helpers ----------
   const formatTime = () => currentTime.toLocaleTimeString('en-US', {
@@ -164,6 +176,30 @@ const BulletinBoard = () => {
           <button className="kiosk-ctrl-btn" onClick={toggleFullscreen}>
             <Maximize2 size={14}/> Fullscreen
           </button>
+
+          {mediaList.length > 1 && (
+            <>
+              <select
+                className="kiosk-ctrl-select"
+                value={currentVideoIndex}
+                onChange={(e) => selectVideo(Number(e.target.value))}
+                aria-label="Choose video"
+              >
+                {mediaList.map((m, i) => (
+                  <option key={m._id || i} value={i}>
+                    {i + 1}. {m.title || 'Untitled'}
+                  </option>
+                ))}
+              </select>
+              <button className="kiosk-ctrl-btn" onClick={goPrev} aria-label="Previous video">
+                <ChevronLeft size={14}/>
+              </button>
+              <button className="kiosk-ctrl-btn" onClick={goNext} aria-label="Next video">
+                <ChevronRight size={14}/>
+              </button>
+            </>
+          )}
+
           {hasVideos && (
             <span className="kiosk-ctrl-status">
               Video {currentVideoIndex + 1} of {mediaList.length}
@@ -208,6 +244,40 @@ const BulletinBoard = () => {
               />
               {currentVideo.title && (
                 <div className="kiosk-video-caption">{currentVideo.title}</div>
+              )}
+
+              {/* Prev / Next arrows overlaid on the stage — only when there's more than one */}
+              {mediaList.length > 1 && (
+                <>
+                  <button
+                    className="kiosk-stage-nav kiosk-stage-nav-prev"
+                    onClick={goPrev}
+                    aria-label="Previous video"
+                  >
+                    <ChevronLeft size={28} />
+                  </button>
+                  <button
+                    className="kiosk-stage-nav kiosk-stage-nav-next"
+                    onClick={goNext}
+                    aria-label="Next video"
+                  >
+                    <ChevronRight size={28} />
+                  </button>
+
+                  {/* Thumbnail-style chip row at bottom of stage */}
+                  <div className="kiosk-stage-chips">
+                    {mediaList.map((m, i) => (
+                      <button
+                        key={m._id || i}
+                        className={`kiosk-stage-chip ${i === currentVideoIndex ? 'active' : ''}`}
+                        onClick={() => selectVideo(i)}
+                        title={m.title || 'Untitled'}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </>
           ) : (

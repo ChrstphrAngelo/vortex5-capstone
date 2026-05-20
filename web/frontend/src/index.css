@@ -3432,6 +3432,101 @@ input, select {
   color: var(--color-text-secondary);
 }
 
+.kiosk-ctrl-select {
+  padding: 6px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+  max-width: 260px;
+}
+
+.kiosk-ctrl-select:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px var(--brand-blue-soft);
+}
+
+/* ---- Stage navigation (overlaid on video) ---- */
+.kiosk-stage-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  transition: background var(--t-fast), transform var(--t-fast);
+  z-index: 5;
+}
+
+.kiosk-stage-nav:hover {
+  background: white;
+  transform: translateY(-50%) scale(1.05);
+}
+
+.kiosk-stage-nav-prev { left: 14px; }
+.kiosk-stage-nav-next { right: 14px; }
+
+/* ---- Stage chips (thumbnail picker row) ---- */
+.kiosk-stage-chips {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  z-index: 4;
+  max-width: 80%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.kiosk-stage-chips::-webkit-scrollbar { display: none; }
+
+.kiosk-stage-chip {
+  flex-shrink: 0;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast), color var(--t-fast);
+  font-family: var(--font-sans);
+}
+
+.kiosk-stage-chip:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+.kiosk-stage-chip.active {
+  background: var(--brand-blue);
+  color: white;
+}
+
 .kiosk-exit-fs {
   position: fixed;
   top: 16px;
