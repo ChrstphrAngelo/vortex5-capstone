@@ -980,11 +980,12 @@ input, select {
 
 /* ================= TABLE CARD ================= */
 .table-card {
-  background: #fff;
-  border-radius: 12px;
-  overflow-x: hidden; /* prevents horizontal scroll */
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow-x: hidden;
   margin-top: 15px;
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
 }
 
 /* ================= MODERN TABLE ================= */
@@ -996,17 +997,21 @@ input, select {
 }
 
 .modern-table th {
-  background: #3eb9e6;
-  color: #fff;
-  padding: 10px 16px;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  padding: 12px 16px;
   text-align: left;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modern-table td {
   padding: 14px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  color: #374151;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
 }
 
 .modern-table tbody tr {
@@ -1014,8 +1019,7 @@ input, select {
 }
 
 .modern-table tbody tr:hover {
-  background-color: #f5f7fb;
-  transform: scale(1.01);
+  background-color: var(--color-surface-2);
 }
 
 
@@ -1038,13 +1042,13 @@ input, select {
 }
 
 .role-badge.admin {
-  background: #e0edff;
-  color: #3b5bfd;
+  background: var(--brand-blue-soft);
+  color: var(--brand-blue);
 }
 
 .role-badge.staff {
-  background: #e7f7ee;
-  color: #14AE5C;
+  background: var(--color-success-soft);
+  color: var(--color-success);
 }
 
 .role-cell {
@@ -1053,8 +1057,8 @@ input, select {
   gap: 6px;
 }
 
-.role-icon.admin { color: #3b5bfd; }
-.role-icon.staff { color: #14AE5C; }
+.role-icon.admin { color: var(--brand-blue); }
+.role-icon.staff { color: var(--color-success); }
 
 /* ================= SELECT ================= */
 .select-wrapper {
@@ -1065,19 +1069,21 @@ input, select {
 
 .role-select {
   padding: 6px 28px 6px 10px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
   font-size: 13px;
-  background: #fbf9fb;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   cursor: pointer;
   appearance: none;
   width: 100%;
+  font-family: var(--font-sans);
 }
 
 .role-select:focus {
   outline: none;
-  border-color: #3b5bfd;
-  background: #fff;
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px var(--brand-blue-soft);
 }
 
 .select-wrapper::after {
@@ -1100,31 +1106,39 @@ input, select {
 
 .search-input {
   flex: 1;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   font-size: 14px;
-  transition: 0.2s;
+  font-family: var(--font-sans);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.search-input::placeholder {
+  color: var(--color-text-tertiary);
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #3eb9e6;
-  background: #fff;
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px var(--brand-blue-soft);
 }
 
 .sort-select {
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  background: #f9fafb;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   cursor: pointer;
-  transition: 0.2s;
+  font-family: var(--font-sans);
+  transition: border-color var(--t-fast);
 }
 
 .sort-select:hover {
-  border-color: #3eb9e6;
+  border-color: var(--brand-blue);
 }
 
 /* ================= PAGINATION ================= */
@@ -1137,7 +1151,9 @@ input, select {
 }
 
 .pagination button {
-  padding: 6px 10px;
+  padding: 6px 12px;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
   border: 1px solid #ccc;
   border-radius: 6px;
   background: #fff;
@@ -1145,11 +1161,11 @@ input, select {
   transition: 0.2s;
 }
 
-.pagination button:hover { background: #f5f7fb; }
+.pagination button:hover { background: var(--color-surface-3); }
 .pagination button.active {
-  background: #3b5bfd;
-  color: #fff;
-  border-color: #3b5bfd;
+  background: var(--brand-blue);
+  color: white;
+  border-color: var(--brand-blue);
 }
 .pagination button:disabled {
   opacity: 0.4;
@@ -1158,25 +1174,40 @@ input, select {
 
 /* ================= BUTTONS ================= */
 .btn {
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: 0.2s;
+  transition: background var(--t-fast), border-color var(--t-fast);
+  font-family: var(--font-sans);
 }
 
 .btn-primary {
-  background: #3b5bfd;
-  color: #fff;
+  background: var(--brand-blue);
+  color: white;
 }
-.btn-primary:hover { background: #2f4ae0; }
+.btn-primary:hover { background: var(--brand-blue-hover); }
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+.btn-secondary:hover { background: var(--color-surface-3); }
 
 .btn-danger {
-  background: #ffecec;
-  color: #d11a2a;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
-.btn-danger:hover { background: #ffd6d6; }
+.btn-danger:hover { background: var(--color-danger); color: white; }
+
+.btn-warning {
+  background: var(--color-warning);
+  color: white;
+}
+.btn-warning:hover { background: #b45309; }
 
 .btn-secondary {
   background: var(--color-bg);
