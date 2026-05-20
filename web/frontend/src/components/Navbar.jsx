@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useLogout } from "../hooks/useLogout"
+import { useTheme } from "../hooks/useTheme"
 import { useState, useEffect  } from 'react'
 import { useLocation } from 'react-router-dom'
 
@@ -22,6 +23,8 @@ import {
   Gauge,
   Megaphone,
   ChevronDown,
+  Sun,
+  Moon,
 } from 'lucide-react'
 
 // Import the logo
@@ -30,6 +33,7 @@ import bewAirLogo from '../assets/bewAirLogo.png'
 const Navbar = () => {
   const { user } = useAuthContext()
   const { logout } = useLogout()
+  const { isDark, toggle: toggleTheme } = useTheme()
 
   const handleLogout = () => {
         logout()
@@ -170,10 +174,19 @@ const Navbar = () => {
         )}
       </nav>
 
+      <button
+        onClick={toggleTheme}
+        className="sidebar-theme-toggle"
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        <span>{isDark ? 'Light mode' : 'Dark mode'}</span>
+      </button>
+
       <button onClick={handleLogout} className="sidebar-logout">
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
+        <LogOut size={18} />
+        <span>Logout</span>
+      </button>
     </div>
   )
 }

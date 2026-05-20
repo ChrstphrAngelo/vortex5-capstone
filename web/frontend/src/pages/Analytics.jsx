@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
+import { useTheme as useAppTheme } from '../hooks/useTheme'
 import dayjs from 'dayjs'
 
+import { ThemeProvider, createTheme } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
 import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
@@ -39,8 +42,28 @@ const CATEGORY_COLORS = {
 
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+// Build a MUI theme that follows our app's light/dark mode. Brand colors match
+// our CSS tokens so MUI components blend with the rest of the dashboard.
+const buildMuiTheme = (isDark) => createTheme({
+  palette: {
+    mode: isDark ? 'dark' : 'light',
+    primary:   { main: '#1e88ff' },
+    secondary: { main: '#18a957' },
+    background: {
+      default: isDark ? '#0c1117' : '#f6f8fb',
+      paper:   isDark ? '#161c24' : '#ffffff',
+    },
+  },
+  typography: {
+    fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+  },
+  shape: { borderRadius: 10 },
+})
+
 const Analytics = () => {
   const { user } = useAuthContext()
+  const { isDark } = useAppTheme()
+  const muiTheme = useMemo(() => buildMuiTheme(isDark), [isDark])
   const isAdmin = user && user.role === 'admin'
 
   const [from, setFrom] = useState(dayjs().subtract(24, 'hour'))
@@ -150,6 +173,8 @@ const Analytics = () => {
 
   // ============== RENDER ==============
   return (
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline enableColorScheme />
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ p: 2 }}>
         <Box
@@ -484,6 +509,7 @@ const Analytics = () => {
         )}
       </Box>
     </LocalizationProvider>
+    </ThemeProvider>
   )
 }
 
