@@ -471,11 +471,7 @@ a:hover {
 }
 
 /* Page wrapper */
-.pages {
-  max-width: 1400px;
-  padding: 20px;
-  margin: 0;
-}
+/* .pages padding is defined further down with the design system */
 
 /* ============== Top header ============== */
 .header {
@@ -526,7 +522,9 @@ a:hover {
 }
 
 .pages {
-  padding: 0;
+  padding: 24px 28px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 /* homepage */
@@ -2479,8 +2477,8 @@ input, select {
    ========================================================================= */
 
 .dash-page {
-  padding: 24px;
-  max-width: 1400px;
+  padding: 0;
+  max-width: 100%;
   margin: 0 auto;
 }
 
