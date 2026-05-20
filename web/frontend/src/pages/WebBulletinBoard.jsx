@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
+import { useAuthContext } from '../hooks/useAuthContext'
 
 const WebBulletinBoard = () => {
+  const { user } = useAuthContext()
 
  /* ------------------ EDUCATIONAL VIDEO -------------- */
 
@@ -457,8 +459,25 @@ const handleUpdate = async () => {
       <button
         className="danger-media-btn"
         onClick={async () => {
-          await fetch(`/api/media/${m._id}`, { method: 'DELETE' })
-          setMediaList(prev => prev.filter(x => x._id !== m._id))
+          if (!confirm(`Delete "${m.title || 'Untitled'}"?`)) return
+          try {
+            const res = await fetch(`/api/media/${m._id}`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                performedBy: user?.email || 'Unknown',
+                videoTitle: m.title || 'Untitled',
+              }),
+            })
+            const json = await res.json()
+            if (!res.ok) {
+              alert(`Delete failed: ${json.error || 'Unknown error'}`)
+              return
+            }
+            setMediaList(prev => prev.filter(x => x._id !== m._id))
+          } catch (err) {
+            alert(`Delete failed: ${err.message}`)
+          }
         }}
       >
         Delete
