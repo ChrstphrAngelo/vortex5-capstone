@@ -218,45 +218,49 @@ const BulletinBoard = () => {
           )}
         </div>
 
-        {/* RIGHT: news + AQI */}
+        {/* RIGHT: single tile containing News + AQI */}
         <aside className="kiosk-sidebar">
-          <div className="kiosk-section kiosk-news">
-            <header className="kiosk-section-head news-head">
-              <Newspaper size={16} />
-              NEWS &amp; EVENTS
-            </header>
-            <div className="kiosk-news-list">
-              {announcements.length === 0 ? (
-                <div className="kiosk-empty">No announcements yet</div>
+          <div className="kiosk-section kiosk-combined">
+            {/* Air quality block on top — quick glance */}
+            <div className="kiosk-combined-block kiosk-combined-aqi">
+              <div className="kiosk-combined-label">Air Quality</div>
+              {aqiData ? (
+                <AqiPreview aqi={aqiData} />
               ) : (
-                announcements.slice(0, 4).map((a, i) => (
-                  <div key={a._id || i} className="kiosk-news-row">
-                    <div className="kiosk-news-date">
-                      <CalendarDays size={14} />
-                      <span>{a.date || formatDate()}</span>
-                    </div>
-                    <div className="kiosk-news-body">
-                      <div className="kiosk-news-title">{a.title}</div>
-                      {a.description && (
-                        <div className="kiosk-news-desc">{a.description}</div>
-                      )}
-                      {a.time && <div className="kiosk-news-time">{a.time}</div>}
-                    </div>
-                  </div>
-                ))
+                <div className="kiosk-empty">Waiting for sensor data...</div>
               )}
             </div>
-          </div>
 
-          <div className="kiosk-section kiosk-aqi-preview">
-            <header className="kiosk-section-head aqi-head">
-              AIR QUALITY
-            </header>
-            {aqiData ? (
-              <AqiPreview aqi={aqiData} />
-            ) : (
-              <div className="kiosk-empty">Waiting for sensor data...</div>
-            )}
+            <div className="kiosk-combined-divider" />
+
+            {/* News list below */}
+            <div className="kiosk-combined-block kiosk-combined-news">
+              <div className="kiosk-combined-label">
+                <Newspaper size={14} />
+                News &amp; Events
+              </div>
+              <div className="kiosk-news-list">
+                {announcements.length === 0 ? (
+                  <div className="kiosk-empty">No announcements yet</div>
+                ) : (
+                  announcements.slice(0, 4).map((a, i) => (
+                    <div key={a._id || i} className="kiosk-news-row">
+                      <div className="kiosk-news-date">
+                        <CalendarDays size={14} />
+                        <span>{a.date || formatDate()}</span>
+                      </div>
+                      <div className="kiosk-news-body">
+                        <div className="kiosk-news-title">{a.title}</div>
+                        {a.description && (
+                          <div className="kiosk-news-desc">{a.description}</div>
+                        )}
+                        {a.time && <div className="kiosk-news-time">{a.time}</div>}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </aside>
       </div>
