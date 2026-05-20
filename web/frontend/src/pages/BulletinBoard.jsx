@@ -246,38 +246,20 @@ const BulletinBoard = () => {
                 <div className="kiosk-video-caption">{currentVideo.title}</div>
               )}
 
-              {/* Prev / Next arrows overlaid on the stage — only when there's more than one */}
+              {/* Thumbnail-style chip row at bottom of stage — only when there's more than one */}
               {mediaList.length > 1 && (
-                <>
-                  <button
-                    className="kiosk-stage-nav kiosk-stage-nav-prev"
-                    onClick={goPrev}
-                    aria-label="Previous video"
-                  >
-                    <ChevronLeft size={28} />
-                  </button>
-                  <button
-                    className="kiosk-stage-nav kiosk-stage-nav-next"
-                    onClick={goNext}
-                    aria-label="Next video"
-                  >
-                    <ChevronRight size={28} />
-                  </button>
-
-                  {/* Thumbnail-style chip row at bottom of stage */}
-                  <div className="kiosk-stage-chips">
-                    {mediaList.map((m, i) => (
-                      <button
-                        key={m._id || i}
-                        className={`kiosk-stage-chip ${i === currentVideoIndex ? 'active' : ''}`}
-                        onClick={() => selectVideo(i)}
-                        title={m.title || 'Untitled'}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
-                  </div>
-                </>
+                <div className="kiosk-stage-chips">
+                  {mediaList.map((m, i) => (
+                    <button
+                      key={m._id || i}
+                      className={`kiosk-stage-chip ${i === currentVideoIndex ? 'active' : ''}`}
+                      onClick={() => selectVideo(i)}
+                      title={m.title || 'Untitled'}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
               )}
             </>
           ) : (
