@@ -245,22 +245,6 @@ const BulletinBoard = () => {
               {currentVideo.title && (
                 <div className="kiosk-video-caption">{currentVideo.title}</div>
               )}
-
-              {/* Thumbnail-style chip row at bottom of stage — only when there's more than one */}
-              {mediaList.length > 1 && (
-                <div className="kiosk-stage-chips">
-                  {mediaList.map((m, i) => (
-                    <button
-                      key={m._id || i}
-                      className={`kiosk-stage-chip ${i === currentVideoIndex ? 'active' : ''}`}
-                      onClick={() => selectVideo(i)}
-                      title={m.title || 'Untitled'}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
             </>
           ) : (
             <div className="kiosk-stage-placeholder">

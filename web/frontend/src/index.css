@@ -3450,54 +3450,6 @@ input, select {
   box-shadow: 0 0 0 3px var(--brand-blue-soft);
 }
 
-/* ---- Stage chips (thumbnail picker row) ---- */
-.kiosk-stage-chips {
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 999px;
-  box-shadow: var(--shadow-md);
-  z-index: 4;
-  max-width: 80%;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.kiosk-stage-chips::-webkit-scrollbar { display: none; }
-
-.kiosk-stage-chip {
-  flex-shrink: 0;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 10px;
-  background: transparent;
-  border: none;
-  border-radius: 999px;
-  color: #475569;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--t-fast), color var(--t-fast);
-  font-family: var(--font-sans);
-}
-
-.kiosk-stage-chip:hover {
-  background: rgba(15, 23, 42, 0.06);
-  color: #0f172a;
-}
-
-.kiosk-stage-chip.active {
-  background: var(--brand-blue);
-  color: white;
-}
 
 .kiosk-exit-fs {
   position: fixed;
