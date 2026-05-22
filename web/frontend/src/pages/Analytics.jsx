@@ -724,9 +724,9 @@ const Analytics = () => {
                 </CardContent>
               </Card>
 
-              <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
                 {/* AQI distribution (feature 6) */}
-                <Grid item xs={12} md={5}>
+                <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>AQI Category Distribution</Typography>
@@ -735,26 +735,26 @@ const Analytics = () => {
                       </Typography>
                       {data.categories.every(c => c.count === 0)
                         ? <Typography color="text.secondary">No data in this range.</Typography>
-                        : <ReactECharts option={donutOption} style={{ height: 300 }} notMerge />}
+                        : <ReactECharts option={donutOption} style={{ height: 320 }} notMerge />}
                     </CardContent>
                   </Card>
-                </Grid>
+                </Box>
 
                 {/* Comparative analysis (feature 5) */}
-                <Grid item xs={12} md={7}>
+                <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
                       <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Comparative Analysis</Typography>
                       {data.comparison ? (
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} sm={6}>
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                          <Box sx={{ flex: '1 1 200px', minWidth: 0 }}>
                             <CompareBlock
                               title="This period vs. previous"
                               current={data.comparison.current.avgAqi}
                               previous={data.comparison.previous.avgAqi}
                             />
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
+                          </Box>
+                          <Box sx={{ flex: '1 1 200px', minWidth: 0 }}>
                             <CompareBlock
                               title="Weekday vs. weekend"
                               current={data.comparison.weekday.avgAqi}
@@ -762,13 +762,13 @@ const Analytics = () => {
                               currentLabel="Weekday"
                               previousLabel="Weekend"
                             />
-                          </Grid>
-                        </Grid>
+                          </Box>
+                        </Box>
                       ) : <Typography color="text.secondary">Not enough data.</Typography>}
                     </CardContent>
                   </Card>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
 
               {/* Per-pollutant statistics (feature 1) */}
               <Card sx={{ mb: 2 }}>
@@ -896,6 +896,14 @@ const InsightRow = ({ insight }) => {
   )
 }
 
+// Map a variability word to a pill style.
+const STABILITY_CLASS = {
+  'Very stable': 'stats-pill-stable',
+  'Stable': 'stats-pill-stable',
+  'Moderate': 'stats-pill-moderate',
+  'Highly variable': 'stats-pill-variable',
+}
+
 const PollutantStatsTable = ({ stats, limits }) => (
   <Box sx={{ overflowX: 'auto' }}>
     <table className="stats-table">
@@ -910,27 +918,35 @@ const PollutantStatsTable = ({ stats, limits }) => (
           if (!s) return null
           const u = p.unit ? ` ${p.unit}` : ''
           const limit = limits?.[p.key]
-          // Status dot: green if avg within limit, red if over. No limit -> neutral.
+
+          // Status pill
+          let statusClass = 'stats-pill-na'
+          let statusText = 'No limit'
           let dotColor = '#94a3b8'
-          let statusText = '—'
           if (limit != null && s.avg != null) {
             const over = s.avg > limit
-            dotColor = over ? '#dc2626' : '#16a34a'
+            statusClass = over ? 'stats-pill-over' : 'stats-pill-ok'
             statusText = over ? 'Over limit' : 'Within limit'
+            dotColor = over ? '#dc2626' : '#16a34a'
           }
+
+          // Stability pill
+          const stab = variabilityWord(s.avg, s.std)
+          const stabClass = STABILITY_CLASS[stab] || 'stats-pill-na'
+
           return (
             <tr key={p.key}>
               <td className="stats-name">{p.label}</td>
               <td>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, display: 'inline-block' }} />
-                  <span style={{ fontSize: 12 }}>{statusText}</span>
+                <span className={`stats-pill ${statusClass}`}>
+                  <span className="stats-pill-dot" style={{ background: dotColor }} />
+                  {statusText}
                 </span>
               </td>
-              <td><strong>{s.avg ?? '—'}</strong>{s.avg != null ? u : ''}</td>
+              <td><strong style={{ color: 'var(--color-text-primary)' }}>{s.avg ?? '—'}</strong>{s.avg != null ? u : ''}</td>
               <td>{s.min ?? '—'}{s.min != null ? u : ''}</td>
               <td>{s.max ?? '—'}{s.max != null ? u : ''}</td>
-              <td>{variabilityWord(s.avg, s.std)}</td>
+              <td><span className={`stats-pill ${stabClass}`}>{stab}</span></td>
             </tr>
           )
         })}

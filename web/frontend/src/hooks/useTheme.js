@@ -19,24 +19,38 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme)
 }
 
-// Apply the saved theme as early as possible (before React mounts) to avoid flash.
-applyTheme(readInitialTheme())
+// ----- Shared module-level state -----
+// All useTheme() callers read from and subscribe to this single source of truth,
+// so toggling the theme anywhere (e.g. the sidebar) updates every component that
+// depends on it — including the Analytics page's MUI ThemeProvider — without a refresh.
+let currentTheme = readInitialTheme()
+const listeners = new Set()
+
+// Apply the saved theme before React mounts to avoid a flash.
+applyTheme(currentTheme)
+
+function setGlobalTheme(next) {
+  if (next !== 'light' && next !== 'dark') return
+  currentTheme = next
+  try { localStorage.setItem(STORAGE_KEY, next) } catch (_) { /* no-op */ }
+  applyTheme(next)
+  listeners.forEach(fn => fn(next))
+}
 
 export function useTheme() {
-  const [theme, setThemeState] = useState(readInitialTheme)
+  const [theme, setLocal] = useState(currentTheme)
 
-  const setTheme = useCallback((next) => {
-    setThemeState(next)
-    try { localStorage.setItem(STORAGE_KEY, next) } catch (_) { /* no-op */ }
-    applyTheme(next)
-  }, [])
+  useEffect(() => {
+    // Subscribe so this component re-renders whenever the global theme changes.
+    const fn = (t) => setLocal(t)
+    listeners.add(fn)
+    // Sync in case the theme changed between initial render and this effect.
+    if (currentTheme !== theme) setLocal(currentTheme)
+    return () => { listeners.delete(fn) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggle = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark')
-  }, [theme, setTheme])
-
-  // Keep DOM in sync if state changes from anywhere else
-  useEffect(() => { applyTheme(theme) }, [theme])
+  const setTheme = useCallback((next) => setGlobalTheme(next), [])
+  const toggle = useCallback(() => setGlobalTheme(currentTheme === 'dark' ? 'light' : 'dark'), [])
 
   return { theme, setTheme, toggle, isDark: theme === 'dark' }
 }

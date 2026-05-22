@@ -476,33 +476,66 @@ a:hover {
 /* ---- Analytics pollutant stats table ---- */
 .stats-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13.5px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 .stats-table th {
   text-align: right;
-  padding: 8px 12px;
+  padding: 11px 16px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  background: var(--color-surface-2);
   color: var(--color-text-tertiary);
   border-bottom: 1px solid var(--color-border);
 }
 .stats-table th:first-child { text-align: left; }
 .stats-table td {
   text-align: right;
-  padding: 9px 12px;
+  padding: 11px 16px;
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 .stats-table td.stats-name {
   text-align: left;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text-primary);
 }
+/* Zebra striping for readability */
+.stats-table tbody tr:nth-child(even) td {
+  background: var(--color-surface-2);
+}
 .stats-table tbody tr:last-child td { border-bottom: none; }
-.stats-table tbody tr:hover td { background: var(--color-surface-2); }
+.stats-table tbody tr:hover td { background: var(--brand-blue-soft); }
+
+/* Status + stability pills inside the stats table */
+.stats-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stats-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.stats-pill-ok    { background: var(--color-success-soft); color: var(--color-success-strong); }
+.stats-pill-over  { background: var(--color-danger-soft);  color: var(--color-danger-strong); }
+.stats-pill-na    { background: var(--color-surface-3);    color: var(--color-text-tertiary); }
+.stats-pill-stable   { background: var(--color-success-soft); color: var(--color-success-strong); }
+.stats-pill-moderate { background: var(--color-warning-soft); color: var(--color-warning-strong); }
+.stats-pill-variable { background: var(--color-danger-soft);  color: var(--color-danger-strong); }
 
 /* ============== Top header ============== */
 .header {
