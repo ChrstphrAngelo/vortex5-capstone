@@ -2581,6 +2581,31 @@ input, select {
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
+/* Analytics KPI tiles — a bit larger, with a hint line */
+.analytics-kpis {
+  margin-bottom: 20px;
+}
+.analytics-kpi {
+  padding: 24px;
+  gap: 4px;
+}
+.analytics-kpi .dash-kpi-value {
+  font-size: 42px;
+}
+.analytics-kpi .dash-kpi-label {
+  font-size: 13px;
+}
+.analytics-kpi-hint {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+.analytics-kpi .dash-kpi-sub {
+  font-size: 12.5px;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
 .dash-kpi-clickable {
   cursor: pointer;
 }

@@ -26,6 +26,8 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { DataGrid } from '@mui/x-data-grid'
 
+import { Activity, TrendingUp, TrendingDown, Minus, Clock, ShieldCheck } from 'lucide-react'
+
 const CATEGORY_COLORS = {
   'Good': '#16a34a',
   'Moderate': '#f59e0b',
@@ -147,6 +149,17 @@ const Analytics = () => {
     const map = {}
     ;(data?.exceedances || []).forEach(e => { map[e.field] = e.limit })
     return map
+  }, [data])
+
+  // ---- Derived KPI values for the headline tiles ----
+  const kpiExtras = useMemo(() => {
+    if (!data) return { excHours: 0, trendDelta: null }
+    const aqiExc = (data.exceedances || []).find(e => e.field === 'Aqi')
+    const excHours = aqiExc?.hours ?? 0
+    const cur = data.comparison?.current?.avgAqi ?? 0
+    const prev = data.comparison?.previous?.avgAqi ?? 0
+    const trendDelta = prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null
+    return { excHours, trendDelta }
   }, [data])
 
   // ---- Plain-language insights (feature #1) ----
@@ -274,6 +287,17 @@ const Analytics = () => {
         backgroundColor: ec.tooltipBg,
         borderColor: ec.tooltipBorder,
         textStyle: { color: ec.text },
+        // Snap a crosshair to the nearest reading as you move across the chart.
+        axisPointer: {
+          type: 'line',
+          snap: true,
+          lineStyle: { color: '#1e88ff', width: 1, type: 'dashed' },
+          label: {
+            show: true,
+            backgroundColor: '#1e88ff',
+            formatter: (p) => dayjs(p.value).format('MMM D, h:mm A'),
+          },
+        },
         formatter: (params) => {
           const p = params[0]
           const t = dayjs(p.value[0]).format('MMM D, h:mm A')
@@ -314,6 +338,17 @@ const Analytics = () => {
         type: 'line',
         smooth: true,
         showSymbol: false,
+        // Show a highlighted dot at the hovered point.
+        symbol: 'circle',
+        symbolSize: 8,
+        emphasis: {
+          focus: 'series',
+          itemStyle: {
+            color: '#1e88ff',
+            borderColor: '#fff',
+            borderWidth: 2,
+          },
+        },
         data: points,
         lineStyle: { width: 2.5, color: '#1e88ff' },
         itemStyle: { color: '#1e88ff' },
@@ -532,25 +567,68 @@ const Analytics = () => {
 
           {data && !loading && (
             <>
-              {/* Insights panel (feature #1) */}
-              {insights.length > 0 && (
-                <Card sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>Key Insights</Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {insights.map((ins, i) => <InsightRow key={i} insight={ins} />)}
-                    </Box>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* KPI cards */}
-              <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} sm={6} md={3}><KpiCard label="Average AQI" value={data.kpis.avg} subtitle={`${data.kpis.avgCategory} — ${HEALTH_NOTE[data.kpis.avgCategory] || ''}`} color={CATEGORY_COLORS[data.kpis.avgCategory]} /></Grid>
-                <Grid item xs={12} sm={6} md={3}><KpiCard label="Highest AQI" value={data.kpis.max} subtitle="Peak in range" color="#dc2626" /></Grid>
-                <Grid item xs={12} sm={6} md={3}><KpiCard label="% Good" value={`${data.kpis.pctGood}%`} subtitle="Of all readings" color="#16a34a" /></Grid>
-                <Grid item xs={12} sm={6} md={3}><KpiCard label="Total Readings" value={data.kpis.count.toLocaleString()} subtitle="In selected range" color="#1e88ff" /></Grid>
-              </Grid>
+              {/* KPI cards — dashboard-style grid, auto-fit, larger tiles */}
+              <div className="dash-kpis analytics-kpis">
+                <AnalyticsKpi
+                  icon={<Activity size={22} />}
+                  label="Average AQI"
+                  value={data.kpis.avg}
+                  hint={`${data.kpis.avgCategory}`}
+                  sub={HEALTH_NOTE[data.kpis.avgCategory] || ''}
+                  accent={CATEGORY_COLORS[data.kpis.avgCategory]}
+                />
+                <AnalyticsKpi
+                  icon={<TrendingUp size={22} />}
+                  label="Highest AQI"
+                  value={data.kpis.max}
+                  hint="Worst single reading"
+                  sub="The peak AQI recorded in this range"
+                  accent="#dc2626"
+                />
+                <AnalyticsKpi
+                  icon={<Clock size={22} />}
+                  label="Hours Over Limit"
+                  value={kpiExtras.excHours}
+                  hint={kpiExtras.excHours > 0 ? 'Air was unsafe' : 'Air stayed safe'}
+                  sub={
+                    kpiExtras.excHours > 0
+                      ? `AQI was above the safe limit for ${kpiExtras.excHours} hour${kpiExtras.excHours === 1 ? '' : 's'}`
+                      : 'AQI never crossed the safe limit'
+                  }
+                  accent={kpiExtras.excHours > 0 ? '#dc2626' : '#16a34a'}
+                />
+                <AnalyticsKpi
+                  icon={
+                    kpiExtras.trendDelta == null ? <Minus size={22} />
+                    : kpiExtras.trendDelta < 0 ? <TrendingDown size={22} />
+                    : kpiExtras.trendDelta > 0 ? <TrendingUp size={22} />
+                    : <Minus size={22} />
+                  }
+                  label="Trend"
+                  value={
+                    kpiExtras.trendDelta == null ? '—'
+                    : `${Math.abs(kpiExtras.trendDelta)}%`
+                  }
+                  hint={
+                    kpiExtras.trendDelta == null ? 'No prior data'
+                    : kpiExtras.trendDelta < 0 ? 'Improving'
+                    : kpiExtras.trendDelta > 0 ? 'Worsening'
+                    : 'No change'
+                  }
+                  sub={
+                    kpiExtras.trendDelta == null ? 'Not enough history to compare'
+                    : kpiExtras.trendDelta < 0 ? 'Air is better than the previous period'
+                    : kpiExtras.trendDelta > 0 ? 'Air is worse than the previous period'
+                    : 'Same as the previous period'
+                  }
+                  accent={
+                    kpiExtras.trendDelta == null ? '#94a3b8'
+                    : kpiExtras.trendDelta < 0 ? '#16a34a'
+                    : kpiExtras.trendDelta > 0 ? '#dc2626'
+                    : '#94a3b8'
+                  }
+                />
+              </div>
 
               {/* Trend (feature 2) */}
               <Card sx={{ mb: 2 }}>
@@ -686,6 +764,18 @@ const Analytics = () => {
                   />
                 </CardContent>
               </Card>
+
+              {/* Insights panel (feature #1) — moved to bottom */}
+              {insights.length > 0 && (
+                <Card sx={{ mt: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>Key Insights</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {insights.map((ins, i) => <InsightRow key={i} insight={ins} />)}
+                    </Box>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </Box>
@@ -695,14 +785,15 @@ const Analytics = () => {
 }
 
 // ============== Sub-components ==============
-const KpiCard = ({ label, value, subtitle, color }) => (
-  <Card sx={{ height: '100%' }}>
-    <CardContent>
-      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{label.toUpperCase()}</Typography>
-      <Typography variant="h3" sx={{ fontWeight: 800, color: color || 'text.primary', mt: 1 }}>{value}</Typography>
-      <Typography variant="body2" color="text.secondary">{subtitle}</Typography>
-    </CardContent>
-  </Card>
+// Dashboard-style KPI tile (uses the global .dash-kpi classes for consistency).
+const AnalyticsKpi = ({ icon, label, value, hint, sub, accent }) => (
+  <div className="dash-kpi analytics-kpi" style={{ borderTopColor: accent }}>
+    <div className="dash-kpi-icon" style={{ color: accent }}>{icon}</div>
+    <div className="dash-kpi-label">{label}</div>
+    <div className="dash-kpi-value" style={{ color: accent }}>{value}</div>
+    {hint && <div className="analytics-kpi-hint" style={{ color: accent }}>{hint}</div>}
+    {sub && <div className="dash-kpi-sub">{sub}</div>}
+  </div>
 )
 
 const InsightRow = ({ insight }) => {
