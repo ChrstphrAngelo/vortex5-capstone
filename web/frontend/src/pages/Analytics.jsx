@@ -274,11 +274,65 @@ const Analytics = () => {
   const trendOption = useMemo(() => {
     if (!data) return null
     const m = METRIC_OPTIONS.find(o => o.value === metric) || METRIC_OPTIONS[0]
-    const points = data.buckets.map(b => [new Date(b.time).getTime(), b[metric]])
+    const isAqi = metric === 'aqi'
+
+    // For AQI, plot the per-bucket PEAK (so brief spikes show and the chart's
+    // peak matches the "Highest AQI" tile). Other metrics plot the bucket average.
+    const points = data.buckets.map(b => [
+      new Date(b.time).getTime(),
+      isAqi ? (b.aqiMax ?? b.aqi) : b[metric],
+    ])
 
     // Safety limit line for this metric (if one exists)
     const limitField = METRIC_TO_FIELD[metric]
     const limitVal = limitField ? limits[limitField] : null
+
+    const vals = points.map(p => p[1]).filter(v => v != null)
+    // Average reference line: use the TRUE period average from the backend for AQI
+    // (not the average of the plotted peaks), otherwise the mean of plotted points.
+    const avgVal = isAqi
+      ? (data.pollutantStats?.Aqi?.avg != null ? Math.round(data.pollutantStats.Aqi.avg) : null)
+      : (vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : null)
+
+    // #1 AQI category background bands (only for the AQI metric).
+    // Each band is a horizontal zone tinted with the category colour.
+    const maxVal = vals.length ? Math.max(...vals) : 0
+    const AQI_BANDS = [
+      { from: 0,   to: 50,  color: 'rgba(22,163,74,0.10)' },   // Good
+      { from: 50,  to: 100, color: 'rgba(245,158,11,0.10)' },  // Moderate
+      { from: 100, to: 150, color: 'rgba(234,88,12,0.10)' },   // Unhealthy (SG)
+      { from: 150, to: 200, color: 'rgba(220,38,38,0.10)' },   // Unhealthy
+      { from: 200, to: 300, color: 'rgba(147,51,234,0.10)' },  // Very Unhealthy
+      { from: 300, to: 500, color: 'rgba(127,29,29,0.12)' },   // Hazardous
+    ]
+    const bandAreas = isAqi
+      ? AQI_BANDS
+          .filter(b => b.from <= maxVal + 20) // only render bands the data reaches
+          .map(b => [{ yAxis: b.from, itemStyle: { color: b.color } }, { yAxis: b.to }])
+      : []
+
+    // #3 Period-average reference line + #2 threshold line, combined into markLine.
+    const markLineData = []
+    if (avgVal != null) {
+      markLineData.push({
+        yAxis: avgVal,
+        lineStyle: { type: 'solid', color: ec.label, width: 1, opacity: 0.6 },
+        label: {
+          formatter: `Avg ${avgVal}`, color: ec.label, position: 'insideStartTop',
+          fontSize: 11, fontWeight: 600,
+        },
+      })
+    }
+    if (limitVal) {
+      markLineData.push({
+        yAxis: limitVal,
+        lineStyle: { type: 'dashed', color: '#dc2626', width: 1.5 },
+        label: {
+          formatter: `Limit ${limitVal}`, color: '#dc2626', position: 'insideEndTop',
+          fontSize: 11, fontWeight: 600,
+        },
+      })
+    }
 
     return {
       grid: { left: 52, right: 24, top: 24, bottom: 64 },
@@ -330,6 +384,10 @@ const Analytics = () => {
       },
       yAxis: {
         type: 'value',
+        min: 0,
+        // For AQI, always show at least up to 150 (Good→SG zones) so the
+        // colour bands are visible, expanding if readings go higher.
+        max: isAqi ? Math.max(150, Math.ceil((maxVal + 20) / 50) * 50) : undefined,
         axisLabel: { color: ec.label },
         splitLine: { lineStyle: { color: ec.split } },
       },
@@ -352,7 +410,9 @@ const Analytics = () => {
         data: points,
         lineStyle: { width: 2.5, color: '#1e88ff' },
         itemStyle: { color: '#1e88ff' },
-        areaStyle: {
+        // Keep the gradient fill only when NOT showing category bands,
+        // so the bands stay readable behind the line.
+        areaStyle: isAqi ? undefined : {
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
@@ -361,20 +421,37 @@ const Analytics = () => {
             ],
           },
         },
-        // Threshold reference line (feature #3)
-        markLine: limitVal ? {
+        // #1 Category bands + #3 average line + threshold line.
+        markArea: bandAreas.length ? { silent: true, data: bandAreas } : undefined,
+        markLine: markLineData.length ? {
           silent: true,
           symbol: 'none',
-          lineStyle: { type: 'dashed', color: '#dc2626', width: 1.5 },
-          label: {
-            formatter: `Limit ${limitVal}`,
-            color: '#dc2626',
-            position: 'insideEndTop',
-            fontSize: 11,
-            fontWeight: 600,
-          },
-          data: [{ yAxis: limitVal }],
+          data: markLineData,
         } : undefined,
+        // #2 Peak & low markers
+        markPoint: {
+          symbolSize: 46,
+          data: [
+            {
+              type: 'max',
+              name: 'Peak',
+              itemStyle: { color: '#dc2626' },
+              label: {
+                formatter: (p) => `Peak\n${Array.isArray(p.value) ? p.value[1] : p.value}`,
+                color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: 12,
+              },
+            },
+            {
+              type: 'min',
+              name: 'Low',
+              itemStyle: { color: '#16a34a' },
+              label: {
+                formatter: (p) => `Low\n${Array.isArray(p.value) ? p.value[1] : p.value}`,
+                color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: 12,
+              },
+            },
+          ],
+        },
       }],
     }
   }, [data, metric, ec, limits])
@@ -637,11 +714,13 @@ const Analytics = () => {
                     {(METRIC_OPTIONS.find(o => o.value === metric) || {}).label} Over Time
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-                    Red dashed line = safety limit. Scroll to zoom, or drag the slider below to focus on a time range.
+                    {metric === 'aqi'
+                      ? 'Line shows the peak AQI per interval. Background colors are health zones (green = good → red = unhealthy); gray line = period average; peak/low points marked. Scroll or drag the slider to zoom.'
+                      : 'Red dashed line = safety limit, gray line = period average, peak/low points marked. Scroll or drag the slider to zoom.'}
                   </Typography>
                   {data.buckets.length === 0
                     ? <Typography color="text.secondary">No data in this range.</Typography>
-                    : <ReactECharts option={trendOption} style={{ height: 360 }} notMerge />}
+                    : <ReactECharts option={trendOption} style={{ height: 480 }} notMerge />}
                 </CardContent>
               </Card>
 

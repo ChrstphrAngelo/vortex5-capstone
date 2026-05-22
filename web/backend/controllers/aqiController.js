@@ -170,6 +170,7 @@ const getAnalytics = async (req, res) => {
               { $mod: [{ $toLong: '$createdAt' }, bucketMs] }
             ] }},
             avgAqi:  { $avg: '$Aqi' },
+            maxAqi:  { $max: '$Aqi' },   // peak AQI within the bucket (for the trend line)
             avgPM25: { $avg: '$PM25' },
             avgPM10: { $avg: '$PM10' },
             avgCO2:  { $avg: '$CO2' },
@@ -304,6 +305,7 @@ const getAnalytics = async (req, res) => {
       buckets: bucketsAgg.map(b => ({             // feature 2
         time: b._id,
         aqi: Math.round(b.avgAqi),
+        aqiMax: Math.round(b.maxAqi),
         pm25: round(b.avgPM25),
         pm10: round(b.avgPM10),
         co2: Math.round(b.avgCO2),
