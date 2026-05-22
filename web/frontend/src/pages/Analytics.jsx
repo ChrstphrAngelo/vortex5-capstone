@@ -268,7 +268,7 @@ const Analytics = () => {
     const limitVal = limitField ? limits[limitField] : null
 
     return {
-      grid: { left: 52, right: 24, top: 24, bottom: 36 },
+      grid: { left: 52, right: 24, top: 24, bottom: 64 },
       tooltip: {
         trigger: 'axis',
         backgroundColor: ec.tooltipBg,
@@ -280,6 +280,21 @@ const Analytics = () => {
           return `${t}<br/><b>${p.value[1]}</b>${m.unit ? ' ' + m.unit : ''}`
         },
       },
+      // Zoom: scroll/pinch to zoom in-chart, plus a draggable slider at the bottom.
+      dataZoom: [
+        { type: 'inside', throttle: 50 },
+        {
+          type: 'slider',
+          height: 18,
+          bottom: 8,
+          borderColor: ec.split,
+          fillerColor: 'rgba(30,136,255,0.12)',
+          handleStyle: { color: '#1e88ff' },
+          dataBackground: { lineStyle: { color: ec.axis }, areaStyle: { color: ec.split } },
+          textStyle: { color: ec.label },
+          labelFormatter: (val) => dayjs(val).format('MMM D, h A'),
+        },
+      ],
       xAxis: {
         type: 'time',
         axisLine: { lineStyle: { color: ec.axis } },
@@ -544,11 +559,11 @@ const Analytics = () => {
                     {(METRIC_OPTIONS.find(o => o.value === metric) || {}).label} Over Time
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-                    The red dashed line is the safety limit — peaks above it are exceedances.
+                    Red dashed line = safety limit. Scroll to zoom, or drag the slider below to focus on a time range.
                   </Typography>
                   {data.buckets.length === 0
                     ? <Typography color="text.secondary">No data in this range.</Typography>
-                    : <ReactECharts option={trendOption} style={{ height: 320 }} notMerge />}
+                    : <ReactECharts option={trendOption} style={{ height: 360 }} notMerge />}
                 </CardContent>
               </Card>
 
