@@ -105,21 +105,16 @@ const getAnalytics = async (req, res) => {
     const match = { ...deviceFilter, createdAt: { $gte: from, $lte: to } }
 
     // ----- Trend bucket size -----
-    // Honour an explicit granularity, else auto-pick fine-grained buckets so the
-    // user can hover on near-minute resolution for short ranges, while keeping
-    // point counts reasonable (~1000-1500 max) for wider ranges.
+    // Honour an explicit granularity, else auto-pick for ~60-100 points.
     const granularity = req.query.granularity // 'hour' | 'day' | 'week' | 'month' | undefined
-    const MIN = 60 * 1000
     const bucketMs = granularity === 'hour'  ? 3600 * 1000
                   : granularity === 'day'   ? 86400 * 1000
                   : granularity === 'week'  ? 7 * 86400 * 1000
                   : granularity === 'month' ? 30 * 86400 * 1000
-                  : rangeMs <= 6 * 3600 * 1000   ? 1 * MIN    // <=6h  : 1 min
-                  : rangeMs <= 24 * 3600 * 1000  ? 1 * MIN    // <=24h : 1 min  (1440 pts)
-                  : rangeMs <= 3 * 86400 * 1000  ? 5 * MIN    // <=3d  : 5 min  (864 pts)
-                  : rangeMs <= 7 * 86400 * 1000  ? 10 * MIN   // <=7d  : 10 min (1008 pts)
-                  : rangeMs <= 30 * 86400 * 1000 ? 60 * MIN   // <=30d : 1 hour (720 pts)
-                  : 6 * 3600 * 1000                            // else  : 6 hour
+                  : rangeMs <= 6 * 3600 * 1000  ? 5 * 60 * 1000
+                  : rangeMs <= 24 * 3600 * 1000 ? 15 * 60 * 1000
+                  : rangeMs <= 7 * 86400 * 1000 ? 3600 * 1000
+                  : 6 * 3600 * 1000
 
     // Heatmap always uses last 7 days for a meaningful hour×weekday picture.
     const heatmapFrom = new Date(Date.now() - 7 * 86400 * 1000)
