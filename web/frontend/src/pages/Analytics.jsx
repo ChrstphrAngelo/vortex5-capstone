@@ -66,6 +66,38 @@ const FIELD_LABELS = {
   TVOC: 'TVOC', Formaldehyde: 'HCHO',
 }
 
+// Map a trend metric to its pollutant field (for threshold lines).
+const METRIC_TO_FIELD = {
+  aqi: 'Aqi', pm25: 'PM25', pm10: 'PM10', co2: 'CO2', tvoc: 'TVOC', hcho: 'Formaldehyde',
+}
+
+// Format an hour (0-23) to a 12-hour label like "6 AM" / "12 PM".
+const hourLabel = (h) => {
+  const period = h < 12 ? 'AM' : 'PM'
+  const hr = h % 12 === 0 ? 12 : h % 12
+  return `${hr} ${period}`
+}
+
+// Translate a coefficient of variation (std/avg) into plain language.
+const variabilityWord = (avg, std) => {
+  if (avg == null || std == null || avg === 0) return '—'
+  const cv = std / avg
+  if (cv < 0.1)  return 'Very stable'
+  if (cv < 0.25) return 'Stable'
+  if (cv < 0.5)  return 'Moderate'
+  return 'Highly variable'
+}
+
+// One-line health note for an AQI category.
+const HEALTH_NOTE = {
+  'Good': 'Air quality is satisfactory.',
+  'Moderate': 'Acceptable; unusually sensitive people may feel mild effects.',
+  'Unhealthy (SG)': 'Sensitive groups should limit prolonged exertion.',
+  'Unhealthy': 'Everyone may begin to feel effects.',
+  'Very Unhealthy': 'Health alert — avoid prolonged exposure.',
+  'Hazardous': 'Emergency conditions — stay indoors.',
+}
+
 const buildMuiTheme = (isDark) => createTheme({
   palette: {
     mode: isDark ? 'dark' : 'light',
@@ -109,6 +141,74 @@ const Analytics = () => {
     tooltipBg: isDark ? '#1a212b' : '#ffffff',
     tooltipBorder: isDark ? '#2a3441' : '#e2e8f0',
   }), [isDark])
+
+  // Lookup of pollutant limits from the exceedance data (field -> limit).
+  const limits = useMemo(() => {
+    const map = {}
+    ;(data?.exceedances || []).forEach(e => { map[e.field] = e.limit })
+    return map
+  }, [data])
+
+  // ---- Plain-language insights (feature #1) ----
+  const insights = useMemo(() => {
+    if (!data) return []
+    const out = []
+
+    // 1. Overall good %
+    if (data.kpis.count > 0) {
+      const pct = data.kpis.pctGood
+      out.push({
+        tone: pct >= 70 ? 'good' : pct >= 40 ? 'warning' : 'bad',
+        text: `Air quality was Good ${pct}% of the time during this period.`,
+      })
+    }
+
+    // 2. Worst exceedance
+    const worstExc = (data.exceedances || [])
+      .filter(e => e.field !== 'Aqi' && e.hours > 0)
+      .sort((a, b) => b.pctTime - a.pctTime)[0]
+    if (worstExc) {
+      out.push({
+        tone: 'bad',
+        text: `${FIELD_LABELS[worstExc.field] || worstExc.field} exceeded its safe limit (${worstExc.limit}) for ${worstExc.hours} hour${worstExc.hours === 1 ? '' : 's'} — ${worstExc.pctTime}% of the time.`,
+      })
+    } else if (data.kpis.count > 0) {
+      out.push({ tone: 'good', text: 'No pollutant exceeded its safety limit in this period.' })
+    }
+
+    // 3. Comparison to previous period
+    if (data.comparison && data.comparison.previous.avgAqi > 0) {
+      const cur = data.comparison.current.avgAqi
+      const prev = data.comparison.previous.avgAqi
+      const delta = Math.round(((cur - prev) / prev) * 100)
+      if (delta !== 0) {
+        out.push({
+          tone: delta < 0 ? 'good' : 'warning',
+          text: `Average AQI is ${Math.abs(delta)}% ${delta < 0 ? 'lower (better)' : 'higher (worse)'} than the previous period.`,
+        })
+      }
+    }
+
+    // 4. Worst time (from trend buckets — the bucket with the highest avg AQI)
+    if (data.buckets.length > 0) {
+      const worst = data.buckets.reduce((a, b) => (b.aqi > a.aqi ? b : a))
+      out.push({
+        tone: 'neutral',
+        text: `Air was worst around ${dayjs(worst.time).format('ddd, MMM D · h A')} (AQI ${worst.aqi}).`,
+      })
+    }
+
+    // 5. Stability of AQI
+    const aqiStat = data.pollutantStats?.Aqi
+    if (aqiStat && aqiStat.avg != null) {
+      out.push({
+        tone: 'neutral',
+        text: `AQI readings were ${variabilityWord(aqiStat.avg, aqiStat.std).toLowerCase()} (low fluctuation is better).`,
+      })
+    }
+
+    return out
+  }, [data])
 
   // Fetch devices for the filter dropdown
   useEffect(() => {
@@ -162,6 +262,11 @@ const Analytics = () => {
     if (!data) return null
     const m = METRIC_OPTIONS.find(o => o.value === metric) || METRIC_OPTIONS[0]
     const points = data.buckets.map(b => [new Date(b.time).getTime(), b[metric]])
+
+    // Safety limit line for this metric (if one exists)
+    const limitField = METRIC_TO_FIELD[metric]
+    const limitVal = limitField ? limits[limitField] : null
+
     return {
       grid: { left: 52, right: 24, top: 24, bottom: 36 },
       tooltip: {
@@ -169,12 +274,20 @@ const Analytics = () => {
         backgroundColor: ec.tooltipBg,
         borderColor: ec.tooltipBorder,
         textStyle: { color: ec.text },
-        valueFormatter: (v) => `${v}${m.unit ? ' ' + m.unit : ''}`,
+        formatter: (params) => {
+          const p = params[0]
+          const t = dayjs(p.value[0]).format('MMM D, h:mm A')
+          return `${t}<br/><b>${p.value[1]}</b>${m.unit ? ' ' + m.unit : ''}`
+        },
       },
       xAxis: {
         type: 'time',
         axisLine: { lineStyle: { color: ec.axis } },
-        axisLabel: { color: ec.label },
+        axisLabel: {
+          color: ec.label,
+          formatter: (val) => dayjs(val).format('h A'),
+          hideOverlap: true,
+        },
       },
       yAxis: {
         type: 'value',
@@ -198,9 +311,23 @@ const Analytics = () => {
             ],
           },
         },
+        // Threshold reference line (feature #3)
+        markLine: limitVal ? {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { type: 'dashed', color: '#dc2626', width: 1.5 },
+          label: {
+            formatter: `Limit ${limitVal}`,
+            color: '#dc2626',
+            position: 'insideEndTop',
+            fontSize: 11,
+            fontWeight: 600,
+          },
+          data: [{ yAxis: limitVal }],
+        } : undefined,
       }],
     }
-  }, [data, metric, ec])
+  }, [data, metric, ec, limits])
 
   const donutOption = useMemo(() => {
     if (!data) return null
@@ -240,14 +367,18 @@ const Analytics = () => {
       tooltip: {
         backgroundColor: ec.tooltipBg, borderColor: ec.tooltipBorder,
         textStyle: { color: ec.text },
-        formatter: (p) => `${DOW_LABELS[p.value[1]]} ${p.value[0]}:00<br/>Avg AQI: <b>${p.value[2]}</b>`,
+        formatter: (p) => `${DOW_LABELS[p.value[1]]} ${hourLabel(p.value[0])}<br/>Avg AQI: <b>${p.value[2]}</b>`,
       },
       grid: { left: 50, right: 16, top: 10, bottom: 60 },
       xAxis: {
         type: 'category',
         data: Array.from({ length: 24 }, (_, i) => i),
         splitArea: { show: true },
-        axisLabel: { color: ec.label, interval: 2 },
+        axisLabel: {
+          color: ec.label,
+          interval: 2,
+          formatter: (h) => hourLabel(Number(h)),
+        },
         axisLine: { lineStyle: { color: ec.axis } },
       },
       yAxis: {
@@ -386,9 +517,21 @@ const Analytics = () => {
 
           {data && !loading && (
             <>
+              {/* Insights panel (feature #1) */}
+              {insights.length > 0 && (
+                <Card sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>Key Insights</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {insights.map((ins, i) => <InsightRow key={i} insight={ins} />)}
+                    </Box>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* KPI cards */}
               <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} sm={6} md={3}><KpiCard label="Average AQI" value={data.kpis.avg} subtitle={data.kpis.avgCategory} color={CATEGORY_COLORS[data.kpis.avgCategory]} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><KpiCard label="Average AQI" value={data.kpis.avg} subtitle={`${data.kpis.avgCategory} — ${HEALTH_NOTE[data.kpis.avgCategory] || ''}`} color={CATEGORY_COLORS[data.kpis.avgCategory]} /></Grid>
                 <Grid item xs={12} sm={6} md={3}><KpiCard label="Highest AQI" value={data.kpis.max} subtitle="Peak in range" color="#dc2626" /></Grid>
                 <Grid item xs={12} sm={6} md={3}><KpiCard label="% Good" value={`${data.kpis.pctGood}%`} subtitle="Of all readings" color="#16a34a" /></Grid>
                 <Grid item xs={12} sm={6} md={3}><KpiCard label="Total Readings" value={data.kpis.count.toLocaleString()} subtitle="In selected range" color="#1e88ff" /></Grid>
@@ -397,8 +540,11 @@ const Analytics = () => {
               {/* Trend (feature 2) */}
               <Card sx={{ mb: 2 }}>
                 <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
                     {(METRIC_OPTIONS.find(o => o.value === metric) || {}).label} Over Time
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                    The red dashed line is the safety limit — peaks above it are exceedances.
                   </Typography>
                   {data.buckets.length === 0
                     ? <Typography color="text.secondary">No data in this range.</Typography>
@@ -411,10 +557,13 @@ const Analytics = () => {
                 <Grid item xs={12} md={5}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
-                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>AQI Category Distribution</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 700 }}>AQI Category Distribution</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                        How often the air fell into each health category.
+                      </Typography>
                       {data.categories.every(c => c.count === 0)
                         ? <Typography color="text.secondary">No data in this range.</Typography>
-                        : <ReactECharts option={donutOption} style={{ height: 320 }} notMerge />}
+                        : <ReactECharts option={donutOption} style={{ height: 300 }} notMerge />}
                     </CardContent>
                   </Card>
                 </Grid>
@@ -454,9 +603,9 @@ const Analytics = () => {
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Pollutant Statistics</Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-                    Average, minimum, maximum, and standard deviation across the selected range.
+                    Status shows whether each pollutant's average is within its safety limit. Stability reflects how much readings fluctuated.
                   </Typography>
-                  <PollutantStatsTable stats={data.pollutantStats} />
+                  <PollutantStatsTable stats={data.pollutantStats} limits={limits} />
                 </CardContent>
               </Card>
 
@@ -504,7 +653,7 @@ const Analytics = () => {
                   <DataGrid
                     rows={data.recent.map(r => ({ ...r, id: r._id }))}
                     columns={[
-                      { field: 'createdAt', headerName: 'Time', flex: 1.2, valueFormatter: v => v ? dayjs(v).format('MMM D, HH:mm:ss') : '' },
+                      { field: 'createdAt', headerName: 'Time', flex: 1.3, valueFormatter: v => v ? dayjs(v).format('MMM D, h:mm:ss A') : '' },
                       { field: 'deviceId', headerName: 'Device ID', flex: 1 },
                       { field: 'Aqi', headerName: 'AQI', flex: 0.5 },
                       { field: 'category', headerName: 'Category', flex: 1, renderCell: (p) => (
@@ -541,12 +690,33 @@ const KpiCard = ({ label, value, subtitle, color }) => (
   </Card>
 )
 
-const PollutantStatsTable = ({ stats }) => (
+const InsightRow = ({ insight }) => {
+  const tone = {
+    good:    { bg: '#dcfce7', fg: '#166534', icon: '✓' },
+    warning: { bg: '#fef3c7', fg: '#92400e', icon: '!' },
+    bad:     { bg: '#fee2e2', fg: '#991b1b', icon: '▲' },
+    neutral: { bg: '#e0e7ff', fg: '#3730a3', icon: 'i' },
+  }[insight.tone] || { bg: '#e2e8f0', fg: '#334155', icon: '•' }
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+      <Box sx={{
+        width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+        bgcolor: tone.bg, color: tone.fg, fontWeight: 800, fontSize: 12,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 0.2,
+      }}>{tone.icon}</Box>
+      <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.5 }}>
+        {insight.text}
+      </Typography>
+    </Box>
+  )
+}
+
+const PollutantStatsTable = ({ stats, limits }) => (
   <Box sx={{ overflowX: 'auto' }}>
     <table className="stats-table">
       <thead>
         <tr>
-          <th>Pollutant</th><th>Average</th><th>Min</th><th>Max</th><th>Std Dev</th>
+          <th>Pollutant</th><th>Status</th><th>Average</th><th>Min</th><th>Max</th><th>Stability</th>
         </tr>
       </thead>
       <tbody>
@@ -554,13 +724,28 @@ const PollutantStatsTable = ({ stats }) => (
           const s = stats?.[p.key]
           if (!s) return null
           const u = p.unit ? ` ${p.unit}` : ''
+          const limit = limits?.[p.key]
+          // Status dot: green if avg within limit, red if over. No limit -> neutral.
+          let dotColor = '#94a3b8'
+          let statusText = '—'
+          if (limit != null && s.avg != null) {
+            const over = s.avg > limit
+            dotColor = over ? '#dc2626' : '#16a34a'
+            statusText = over ? 'Over limit' : 'Within limit'
+          }
           return (
             <tr key={p.key}>
               <td className="stats-name">{p.label}</td>
+              <td>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, display: 'inline-block' }} />
+                  <span style={{ fontSize: 12 }}>{statusText}</span>
+                </span>
+              </td>
               <td><strong>{s.avg ?? '—'}</strong>{s.avg != null ? u : ''}</td>
               <td>{s.min ?? '—'}{s.min != null ? u : ''}</td>
               <td>{s.max ?? '—'}{s.max != null ? u : ''}</td>
-              <td>{s.std ?? '—'}</td>
+              <td>{variabilityWord(s.avg, s.std)}</td>
             </tr>
           )
         })}
