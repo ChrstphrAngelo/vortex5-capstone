@@ -473,6 +473,37 @@ a:hover {
 /* Page wrapper */
 /* .pages padding is defined further down with the design system */
 
+/* ---- Analytics pollutant stats table ---- */
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.stats-table th {
+  text-align: right;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-tertiary);
+  border-bottom: 1px solid var(--color-border);
+}
+.stats-table th:first-child { text-align: left; }
+.stats-table td {
+  text-align: right;
+  padding: 9px 12px;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.stats-table td.stats-name {
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.stats-table tbody tr:last-child td { border-bottom: none; }
+.stats-table tbody tr:hover td { background: var(--color-surface-2); }
+
 /* ============== Top header ============== */
 .header {
   display: flex;

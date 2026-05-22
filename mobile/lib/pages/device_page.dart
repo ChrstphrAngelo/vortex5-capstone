@@ -183,7 +183,6 @@ class _DevicePageState extends State<DevicePage> {
     final onlineCount = widget.appState.sensors
         .where((s) => s.status == SensorStatus.active || s.status == SensorStatus.available)
         .length;
-    final warningCount = widget.appState.alerts.length;
     final offlineCount = widget.appState.sensors
         .where((sensor) => sensor.status == SensorStatus.offline)
         .length;
@@ -197,7 +196,7 @@ class _DevicePageState extends State<DevicePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'AirWatch',
+              'BewAir',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
@@ -216,132 +215,156 @@ class _DevicePageState extends State<DevicePage> {
           builder: (context, _) {
             return RefreshIndicator(
               onRefresh: () => widget.appState.refreshFromBackend(),
-              child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Connected Sensors',
-                          style: TextStyle(
-                            fontSize: 34,
-                            fontWeight: FontWeight.w700,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title + add button
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Devices',
+                                      style: TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0F172A),
+                                        letterSpacing: -0.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (widget.appState.isAdmin)
+                                FloatingActionButton.small(
+                                  heroTag: 'provision_device',
+                                  onPressed: _startProvisioning,
+                                  backgroundColor: _blue,
+                                  elevation: 1,
+                                  child: const Icon(Icons.add, color: Colors.white),
+                                ),
+                            ],
                           ),
-                        ),
-                      ),
-                      if (widget.appState.isAdmin)
-                        FloatingActionButton.small(
-                          heroTag: 'provision_device',
-                          onPressed: _startProvisioning,
-                          backgroundColor: const Color(0xFF0F172A),
-                          child: const Icon(Icons.add, color: Colors.white),
-                        ),
-                    ],
-                  ),
-                  Text(
-                    widget.appState.isAdmin
-                        ? 'Configure and share IoT air quality devices.'
-                        : 'Sensors shared with you by an admin.',
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.wifi,
-                          count: '$onlineCount',
-                          label: 'Online',
-                          color: const Color(0xFF1E5BFF),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.error_outline,
-                          count: '$warningCount',
-                          label: 'Warning',
-                          color: const Color(0xFFD97706),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.wifi_off,
-                          count: '$offlineCount',
-                          label: 'Offline',
-                          color: const Color(0xFFDC2626),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    onChanged: (value) => setState(() => _search = value),
-                    decoration: InputDecoration(
-                      hintText: 'Search sensor, room, or ESP32 IP...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: const Color(0xFFE5E7EB),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.appState.isAdmin
+                                ? 'Manage and share air quality sensors.'
+                                : 'Sensors shared with you by an admin.',
+                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Compact online/offline pills
+                          Row(
+                            children: [
+                              _StatusPill(
+                                color: const Color(0xFF0A9A40),
+                                label: 'Online',
+                                count: onlineCount,
+                              ),
+                              const SizedBox(width: 8),
+                              _StatusPill(
+                                color: const Color(0xFFDC2626),
+                                label: 'Offline',
+                                count: offlineCount,
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                tooltip: 'Refresh',
+                                onPressed: () async {
+                                  await widget.appState.refreshFromBackend();
+                                  if (mounted) setState(() {});
+                                },
+                                icon: const Icon(Icons.refresh,
+                                    color: Color(0xFF64748B), size: 22),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Search bar
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: TextField(
+                              onChanged: (value) => setState(() => _search = value),
+                              style: const TextStyle(fontSize: 14),
+                              decoration: const InputDecoration(
+                                hintText: 'Search by name, room, or ID',
+                                hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                                prefixIcon: Icon(Icons.search,
+                                    color: Color(0xFF94A3B8), size: 20),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Text(
-                        'ESP32 Devices',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () async {
-                          await widget.appState.refreshFromBackend();
-                          if (mounted) setState(() {});
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Refresh'),
-                      ),
-                    ],
-                  ),
+
+                  // Device list / empty state
                   if (sensors.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Text(
-                        'No matching sensors found.',
-                        style: TextStyle(color: Colors.black54),
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.sensors_off,
+                                size: 56, color: Color(0xFFCBD5E1)),
+                            const SizedBox(height: 12),
+                            Text(
+                              widget.appState.sensors.isEmpty
+                                  ? (widget.appState.isAdmin
+                                      ? 'No sensors yet'
+                                      : 'No sensors shared with you')
+                                  : 'No matches',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.appState.sensors.isEmpty
+                                  ? (widget.appState.isAdmin
+                                      ? 'Tap + to provision a new BewAir sensor.'
+                                      : 'Ask an admin to share a sensor with your account.')
+                                  : 'Try a different search term.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      sliver: SliverList.builder(
+                        itemCount: sensors.length,
+                        itemBuilder: (ctx, i) => _deviceCard(sensors[i]),
                       ),
                     ),
-                  ...sensors.map(_deviceCard),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF5FF),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFB5D0FF)),
-                    ),
-                    child: Text(
-                      widget.appState.isAdmin
-                          ? 'Need help?\nTap + to provision a new sensor. Tap a sensor and choose "Share Device" to give teachers access.'
-                          : 'Need help?\nAsk an admin to share a sensor with your account. Shared sensors will appear here automatically.',
-                      style: const TextStyle(color: Color(0xFF0F172A)),
-                    ),
-                  ),
                 ],
               ),
-            ),
             );
           },
         ),
@@ -359,106 +382,122 @@ class _DevicePageState extends State<DevicePage> {
     switch (item.status) {
       case SensorStatus.active:
         badgeText = isActive ? 'Active' : 'Online';
-        badgeBg = const Color(0xFFE7F9EC);
-        badgeFg = const Color(0xFF0A9A40);
+        badgeBg = const Color(0xFFDCFCE7);
+        badgeFg = const Color(0xFF15803D);
       case SensorStatus.available:
         badgeText = 'No Data';
-        badgeBg = const Color(0xFFFFF7ED);
-        badgeFg = const Color(0xFFD97706);
+        badgeBg = const Color(0xFFFEF3C7);
+        badgeFg = const Color(0xFF92400E);
       case SensorStatus.offline:
         badgeText = 'Inactive';
-        badgeBg = const Color(0xFFFFEAEA);
-        badgeFg = const Color(0xFFDC2626);
+        badgeBg = const Color(0xFFFEE2E2);
+        badgeFg = const Color(0xFF991B1B);
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () => _showSensorDetails(item),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isActive ? const Color(0xFF60A5FA) : const Color(0xFFD1D5DB),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isActive ? _blue : const Color(0xFFE2E8F0),
+              width: isActive ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
             children: [
+              // Sensor icon — solid blue square, no gradient
               Container(
-                width: 46,
-                height: 46,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4F83FF), Color(0xFF8B2CF5)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
+                  color: _blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.sensors, color: Colors.white),
+                child: Icon(Icons.sensors, color: _blue, size: 22),
               ),
               const SizedBox(width: 12),
+
+              // Name / room / id
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.name,
+                      item.name.isEmpty ? item.id : item.name,
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      item.room,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                    Text(
-                      '${item.id.toUpperCase()} - ${item.esp32IpAddress}',
+                      item.room.isEmpty ? '—' : item.room,
                       style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black45,
+                        color: Color(0xFF64748B),
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.id.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF94A3B8),
+                        fontFamily: 'monospace',
                       ),
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  badgeText,
-                  style: TextStyle(
-                    color: badgeFg,
-                    fontWeight: FontWeight.w600,
+              const SizedBox(width: 8),
+
+              // Right side: status pill + chevron
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      badgeText,
+                      style: TextStyle(
+                        color: badgeFg,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Icon(
+                    Icons.chevron_right,
+                    color: const Color(0xFFCBD5E1),
+                    size: 20,
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(
-                'Endpoint: ${item.esp32Endpoint}',
-                style: const TextStyle(color: Colors.black54),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => _showSensorDetails(item),
-                child: const Text(
-                  'View Details',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -473,39 +512,60 @@ class _DevicePageState extends State<DevicePage> {
 
 }
 
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String count;
-  final String label;
+/// Compact pill showing a count + label with a colored dot indicator.
+/// Replaces the larger _StatCard tiles for a cleaner look.
+class _StatusPill extends StatelessWidget {
   final Color color;
+  final String label;
+  final int count;
 
-  const _StatCard({
-    required this.icon,
-    required this.count,
-    required this.label,
+  const _StatusPill({
     required this.color,
+    required this.label,
+    required this.count,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD1D5DB)),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Column(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 8),
-          Text(
-            count,
-            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
           ),
-          Text(label, style: const TextStyle(color: Colors.black54)),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF475569),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$count',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
