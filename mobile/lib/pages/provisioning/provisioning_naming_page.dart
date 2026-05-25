@@ -16,22 +16,71 @@ class ProvisioningNamingPage extends StatefulWidget {
 
 class _ProvisioningNamingPageState extends State<ProvisioningNamingPage> {
   final _nameCtrl = TextEditingController();
-  final _roomCtrl = TextEditingController();
   bool _submitting = false;
   String? _error;
+
+  // Room dropdown state
+  List<String> _rooms = [];
+  String? _selectedRoom;
+  bool _loadingRooms = true;
+  String? _roomsError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRooms();
+  }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _roomCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRooms() async {
+    setState(() {
+      _loadingRooms = true;
+      _roomsError = null;
+    });
+    try {
+      final res = await http.get(
+        Uri.parse('${UserSession.baseUrl}/api/room'),
+        headers: {
+          if (UserSession.current != null)
+            'Authorization': 'Bearer ${UserSession.current!.token}',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(res.body);
+        final names = data
+            .map((r) => (r['name'] ?? '').toString().trim())
+            .where((n) => n.isNotEmpty)
+            .toList()
+          ..sort();
+        setState(() {
+          _rooms = names;
+          _loadingRooms = false;
+        });
+      } else {
+        setState(() {
+          _loadingRooms = false;
+          _roomsError = 'Could not load rooms (${res.statusCode}).';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _loadingRooms = false;
+        _roomsError = 'Could not load rooms. Check your connection.';
+      });
+    }
   }
 
   Future<void> _submit() async {
     final name = _nameCtrl.text.trim();
-    final room = _roomCtrl.text.trim();
+    final room = _selectedRoom?.trim() ?? '';
     if (name.isEmpty || room.isEmpty) {
-      setState(() => _error = 'Please fill in both fields.');
+      setState(() => _error = 'Please enter a name and choose a room.');
       return;
     }
     setState(() {
@@ -123,16 +172,7 @@ class _ProvisioningNamingPageState extends State<ProvisioningNamingPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _roomCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Room',
-                  hintText: 'e.g. Room 101',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              _roomField(),
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(_error!, style: const TextStyle(color: Colors.red)),
@@ -164,6 +204,87 @@ class _ProvisioningNamingPageState extends State<ProvisioningNamingPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _roomField() {
+    if (_loadingRooms) {
+      return InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Room',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Loading rooms...', style: TextStyle(color: Colors.black54)),
+          ],
+        ),
+      );
+    }
+
+    if (_roomsError != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_roomsError!, style: const TextStyle(color: Colors.red)),
+          const SizedBox(height: 6),
+          TextButton.icon(
+            onPressed: _loadRooms,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+          ),
+        ],
+      );
+    }
+
+    if (_rooms.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Room',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text(
+              'No rooms found',
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Ask an admin to add rooms in Classroom Records on the website first.',
+            style: TextStyle(color: Colors.black54, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: _loadRooms,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reload rooms'),
+          ),
+        ],
+      );
+    }
+
+    return DropdownButtonFormField<String>(
+      initialValue: _selectedRoom,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Room',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      hint: const Text('Select a room'),
+      items: _rooms
+          .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+          .toList(),
+      onChanged: (value) => setState(() => _selectedRoom = value),
     );
   }
 }

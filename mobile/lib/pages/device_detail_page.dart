@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vortex5_application_2/app_state.dart';
 import 'package:vortex5_application_2/models/sensor_device.dart';
+import 'package:vortex5_application_2/pages/share_device_page.dart';
 
 /// Detailed AQI + metrics view for a single sensor.
 /// Pushed from the home page grid when a device card is tapped.
@@ -37,6 +38,64 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
 
   void _onChange() {
     if (mounted) setState(() {});
+  }
+
+  void _openShare(SensorDevice sensor) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ShareDevicePage(
+          appState: widget.appState,
+          deviceId: sensor.id,
+          deviceName: sensor.name,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmReset(SensorDevice sensor) async {
+    if (sensor.status == SensorStatus.offline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Device must be online to receive a reset command. '
+            'Use the BOOT button on the ESP32 instead.',
+          ),
+        ),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Device?'),
+        content: Text(
+          'This will wipe the Wi-Fi credentials on ${sensor.name} and put it '
+          'back into provisioning mode (Wi-Fi "BewAir-XXXX" will appear). '
+          'The device record stays in the system, but it will need to be '
+          're-provisioned to come back online.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reset', style: TextStyle(color: Colors.orange)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final error = await widget.appState.resetDevice(sensor.id);
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(error ?? 'Reset command sent to ${sensor.name}.'),
+      ),
+    );
   }
 
   SensorDevice get _sensor => widget.appState.sensors.firstWhere(
@@ -93,6 +152,34 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
             ),
           ],
         ),
+        actions: [
+          if (widget.appState.isAdmin)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              onSelected: (value) {
+                if (value == 'share') _openShare(sensor);
+                if (value == 'reset') _confirmReset(sensor);
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'share',
+                  child: ListTile(
+                    leading: Icon(Icons.share),
+                    title: Text('Share Device'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'reset',
+                  child: ListTile(
+                    leading: Icon(Icons.restart_alt, color: Colors.orange),
+                    title: Text('Reset Device'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
       body: SafeArea(
         bottom: false,

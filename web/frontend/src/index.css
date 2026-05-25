@@ -3466,6 +3466,31 @@ input, select {
   margin-top: 2px;
 }
 
+.room-icon-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.room-icon-btn:hover {
+  background: var(--color-surface-3);
+  color: var(--color-text-primary);
+}
+
+.room-icon-btn-danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
 /* =========================================================================
    KIOSK BULLETIN BOARD — display-wall layout
    Header (clock) + animation (left) + news/aqi sidebar (right) + ticker

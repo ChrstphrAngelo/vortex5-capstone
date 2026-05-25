@@ -34,6 +34,10 @@ dependencies:
   http: ^1.2.2
   shared_preferences: ^2.3.2
 
+  # Wi-Fi scanning + programmatic connection to the ESP32 SoftAP during provisioning.
+  wifi_iot: ^0.3.19
+  permission_handler: ^11.3.1
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
