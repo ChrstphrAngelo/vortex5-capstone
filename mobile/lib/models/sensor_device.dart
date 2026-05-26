@@ -11,6 +11,7 @@ class SensorDevice {
   final String esp32Endpoint;
   final String wifiName;
   final String connectionType;
+  final bool enabled;
 
   const SensorDevice({
     required this.id,
@@ -23,6 +24,7 @@ class SensorDevice {
     required this.esp32Endpoint,
     required this.wifiName,
     required this.connectionType,
+    this.enabled = true,
   });
 
   factory SensorDevice.fromJson(Map<String, dynamic> json) {
@@ -85,6 +87,7 @@ class SensorDevice {
     String? esp32Endpoint,
     String? wifiName,
     String? connectionType,
+    bool? enabled,
   }) {
     return SensorDevice(
       id: id ?? this.id,
@@ -97,6 +100,7 @@ class SensorDevice {
       esp32Endpoint: esp32Endpoint ?? this.esp32Endpoint,
       wifiName: wifiName ?? this.wifiName,
       connectionType: connectionType ?? this.connectionType,
+      enabled: enabled ?? this.enabled,
     );
   }
 

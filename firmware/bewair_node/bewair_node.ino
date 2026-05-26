@@ -33,6 +33,11 @@ String mqttTopic;    // "bewair/<deviceId>/telemetry"
 enum Mode { MODE_PROVISIONING, MODE_RUNNING };
 Mode mode;
 
+// Soft power state. When false, the node stays connected to MQTT (so it can
+// still receive the "on" command) but stops publishing telemetry. Persisted
+// in NVS so the off/on choice survives reboots.
+bool publishingEnabled = true;
+
 // frame parser
 static uint8_t  frameBuf[80];
 static size_t   frameIdx = 0;
@@ -157,6 +162,14 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
     prefs.remove("wifi_pass");
     delay(500);
     ESP.restart();
+  } else if (cmd == "off") {
+    Serial.println("[mqtt] off cmd — pausing telemetry");
+    publishingEnabled = false;
+    prefs.putBool("enabled", false);
+  } else if (cmd == "on") {
+    Serial.println("[mqtt] on cmd — resuming telemetry");
+    publishingEnabled = true;
+    prefs.putBool("enabled", true);
   }
 }
 
@@ -201,6 +214,7 @@ bool checksumValid(const uint8_t* buf, size_t total) {
 }
 
 void publishFrame(const uint8_t* buf, size_t total) {
+  if (!publishingEnabled) return;   // soft "off" — skip telemetry, stay connected
   static char payload[200];
   for (size_t i = 0; i < total; i++) snprintf(payload + i * 2, 3, "%02X", buf[i]);
   payload[total * 2] = 0;
@@ -287,6 +301,7 @@ void setup() {
 
   Serial2.begin(9600, SERIAL_8N1, SENSOR_RX, SENSOR_TX);
   prefs.begin("bewair", false);
+  publishingEnabled = prefs.getBool("enabled", true);   // default on
 
   deviceId  = "BewAir-" + macSuffix();
   mqttTopic = "bewair/" + deviceId + "/telemetry";

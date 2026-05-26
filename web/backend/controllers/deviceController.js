@@ -127,6 +127,27 @@ const resetDevice = async (req, res) => {
   }
 }
 
+// POST /api/device/:deviceId/power — admin-only: soft on/off via MQTT.
+// Body: { on: true|false }. Publishes 'on'/'off' to the device and records
+// the desired state so the UI can show "Off" even when no telemetry arrives.
+const setDevicePower = async (req, res) => {
+  const { deviceId } = req.params
+  const { on } = req.body
+  if (typeof on !== 'boolean') {
+    return res.status(400).json({ error: 'Body must include boolean "on"' })
+  }
+  try {
+    const device = await Device.findOne({ deviceId })
+    if (!device) return res.status(404).json({ error: 'device not found' })
+    await mqttSubscriber.publishCommand(deviceId, on ? 'on' : 'off')
+    device.enabled = on
+    await device.save()
+    res.status(200).json({ ok: true, enabled: on, message: `${deviceId} turned ${on ? 'on' : 'off'}` })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
 module.exports = {
   getMyDevices,
   registerDevice,
@@ -134,5 +155,6 @@ module.exports = {
   unshareDevice,
   getDeviceUsers,
   deleteDevice,
-  resetDevice
+  resetDevice,
+  setDevicePower
 }

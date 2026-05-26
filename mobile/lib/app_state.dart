@@ -186,6 +186,7 @@ class AppState extends ChangeNotifier {
           esp32Endpoint: '',
           wifiName: '',
           connectionType: 'MQTT',
+          enabled: d['enabled'] as bool? ?? true,
         );
       }).toList();
 
@@ -259,6 +260,31 @@ class AppState extends ChangeNotifier {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode == 200) return null;
     return body['error']?.toString() ?? 'Failed to send reset command';
+  }
+
+  /// Admin-only: soft power a device on/off via MQTT.
+  /// Returns null on success, or an error message.
+  Future<String?> setDevicePower(String deviceId, bool on) async {
+    final uri = Uri.parse('${UserSession.baseUrl}/api/device/$deviceId/power');
+    try {
+      final res = await http.post(
+        uri,
+        headers: _authHeaders,
+        body: jsonEncode({'on': on}),
+      ).timeout(const Duration(seconds: 10));
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      if (res.statusCode == 200) {
+        // Optimistically reflect the new state locally.
+        _sensors = _sensors
+            .map((s) => s.id == deviceId ? s.copyWith(enabled: on) : s)
+            .toList();
+        notifyListeners();
+        return null;
+      }
+      return body['error']?.toString() ?? 'Failed to change power state';
+    } catch (e) {
+      return 'Could not reach the server.';
+    }
   }
 
   /// Admin-only: list users who have access to a device.

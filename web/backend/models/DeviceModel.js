@@ -7,6 +7,7 @@ const DeviceSchema = new Schema({
     name:     { type: String, required: true },
     room:     { type: String, required: true },
     status:   { type: String, default: 'offline', enum: ['online', 'offline'] },
+    enabled:  { type: Boolean, default: true },   // soft power: false = telemetry paused
     lastSeen: { type: Date, default: null }
 }, { timestamps: true })
 
