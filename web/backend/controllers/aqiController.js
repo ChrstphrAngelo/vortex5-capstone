@@ -1,6 +1,7 @@
 const AqiModel = require('../models/AqiModel')
 const Device = require('../models/DeviceModel')
 const ThresholdModel = require('../models/ThresholdModel')
+const getVisibleDeviceIds = require('../utils/visibleDevices')
 
 // EPA AQI category from numeric value
 function aqiCategory(aqi) {
@@ -14,7 +15,7 @@ function aqiCategory(aqi) {
 
 // all readings for user's devices, newest first
 const getAqi = async (req, res) => {
-  const userDeviceIds = req.user.devices || []
+  const userDeviceIds = await getVisibleDeviceIds(req.user)
   if (userDeviceIds.length === 0) return res.status(200).json([])
   const aqis = await AqiModel.find({ deviceId: { $in: userDeviceIds } })
     .sort({ createdAt: -1 })
@@ -25,7 +26,7 @@ const getAqi = async (req, res) => {
 // latest reading per device (only user's devices)
 const getLatestPerDevice = async (req, res) => {
   try {
-    const userDeviceIds = req.user.devices || []
+    const userDeviceIds = await getVisibleDeviceIds(req.user)
     if (userDeviceIds.length === 0) return res.status(200).json([])
     const latest = await AqiModel.aggregate([
       { $match: { deviceId: { $in: userDeviceIds } } },
@@ -88,7 +89,7 @@ const getAnalytics = async (req, res) => {
     pollutantStats: {}, exceedances: [], comparison: null,
   }
   try {
-    const userDeviceIds = req.user.devices || []
+    const userDeviceIds = await getVisibleDeviceIds(req.user)
     if (userDeviceIds.length === 0) return res.status(200).json(empty)
 
     if (req.query.deviceId && !userDeviceIds.includes(req.query.deviceId)) {

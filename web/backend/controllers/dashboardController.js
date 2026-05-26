@@ -2,6 +2,7 @@ const Device = require('../models/DeviceModel')
 const User = require('../models/userModel')
 const AqiModel = require('../models/AqiModel')
 const ThresholdModel = require('../models/ThresholdModel')
+const getVisibleDeviceIds = require('../utils/visibleDevices')
 
 function aqiCategory(aqi) {
   if (aqi <= 50)  return 'Good'
@@ -15,7 +16,7 @@ function aqiCategory(aqi) {
 // Admin-only: bundled dashboard data — KPIs, device cards, current alerts.
 const getDashboardSummary = async (req, res) => {
   try {
-    const userDeviceIds = req.user.devices || []
+    const userDeviceIds = await getVisibleDeviceIds(req.user)
 
     // 1. User count
     const userCount = await User.countDocuments({ status: 'active' })

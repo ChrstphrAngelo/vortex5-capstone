@@ -1,11 +1,12 @@
 const Device = require('../models/DeviceModel')
 const User = require('../models/userModel')
 const mqttSubscriber = require('../services/mqttSubscriber')
+const getVisibleDeviceIds = require('../utils/visibleDevices')
 
 // GET /api/device — returns only devices the logged-in user has access to
 const getMyDevices = async (req, res) => {
   try {
-    const userDeviceIds = req.user.devices || []
+    const userDeviceIds = await getVisibleDeviceIds(req.user)
     if (userDeviceIds.length === 0) return res.status(200).json([])
     const devices = await Device.find({ deviceId: { $in: userDeviceIds } }).sort({ createdAt: -1 })
     res.status(200).json(devices)
