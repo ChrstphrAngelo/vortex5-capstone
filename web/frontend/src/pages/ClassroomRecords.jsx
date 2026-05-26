@@ -53,17 +53,18 @@ const ClassroomRecords = () => {
     if (res.ok) setManagedRooms(await res.json())
   }
 
+  const fetchDevices = async () => {
+    const res = await fetch('/api/dashboard/summary', { headers: authHeader })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Failed to load')
+    setDevices(json.devices)
+  }
+
   useEffect(() => {
     if (!user) return
     const fetchData = async () => {
       try {
-        const [dashRes] = await Promise.all([
-          fetch('/api/dashboard/summary', { headers: authHeader }),
-          fetchRooms(),
-        ])
-        const json = await dashRes.json()
-        if (!dashRes.ok) throw new Error(json.error || 'Failed to load')
-        setDevices(json.devices)
+        await Promise.all([fetchDevices(), fetchRooms()])
         setError('')
       } catch (err) {
         setError(err.message)
@@ -123,7 +124,9 @@ const ClassroomRecords = () => {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to save room')
-      await fetchRooms()
+      // Refresh both rooms and devices: a rename cascades to devices on the
+      // backend, so we must re-pull devices or the old name lingers in state.
+      await Promise.all([fetchRooms(), fetchDevices()])
       setRoomModal(null)
       showToast(isEdit ? 'Room updated' : 'Room added')
     } catch (err) {
@@ -139,7 +142,7 @@ const ClassroomRecords = () => {
       const res = await fetch(`/api/room/${r.roomId}`, { method: 'DELETE', headers: authHeader })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to delete')
-      await fetchRooms()
+      await Promise.all([fetchRooms(), fetchDevices()])
       showToast('Room deleted')
     } catch (err) {
       showToast('Error: ' + err.message)
