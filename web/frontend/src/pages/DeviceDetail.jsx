@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { ArrowLeft } from 'lucide-react'
 import AqiDetails from '../components/AqiDetails'
+import RecommendedActions from '../components/RecommendedActions'
 
 const DeviceDetail = () => {
   const { deviceId } = useParams()
@@ -119,6 +120,8 @@ const DeviceDetail = () => {
         PM1: null, PM25: null, PM10: null,
         TVOC: null, CO2: null, Formaldehyde: null,
       }} />
+
+      {isOnline && <RecommendedActions reading={displayReading} />}
 
       {!isOnline && (
         <div className="dash-empty" style={{ marginTop: 16 }}>

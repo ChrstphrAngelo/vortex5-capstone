@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:vortex5_application_2/app_state.dart';
 import 'package:vortex5_application_2/models/sensor_device.dart';
@@ -22,15 +24,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final PageController _pageController = PageController();
   int _index = 0;
+  bool _refreshing = false;
+
+  /// 'all' = show every sensor, otherwise the room name to focus on.
+  String _selectedRoom = 'all';
 
   @override
   void initState() {
     super.initState();
     widget.appState.addListener(_handleStateChange);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncActiveToIndex();
-      _showPopupIfNeeded();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncActiveToIndex());
   }
 
   @override
@@ -40,10 +43,17 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  /// Sensors after applying the room filter.
+  List<SensorDevice> get _filtered {
+    final all = widget.appState.sensors;
+    if (_selectedRoom == 'all') return all;
+    return all.where((s) => s.room.trim() == _selectedRoom).toList();
+  }
+
   void _handleStateChange() {
     if (!mounted) return;
-    // Keep the page index within bounds if the device list changed.
-    final count = widget.appState.sensors.length;
+    // Keep the page index within bounds if the (filtered) device list changed.
+    final count = _filtered.length;
     if (count > 0 && _index >= count) {
       _index = count - 1;
       if (_pageController.hasClients) {
@@ -51,36 +61,33 @@ class _HomePageState extends State<HomePage> {
       }
     }
     setState(() {});
-    _showPopupIfNeeded();
   }
 
   void _syncActiveToIndex() {
-    final sensors = widget.appState.sensors;
+    final sensors = _filtered;
     if (sensors.isEmpty) return;
     final i = _index.clamp(0, sensors.length - 1);
     widget.appState.connectSensor(sensors[i].id);
   }
 
-  void _showPopupIfNeeded() {
-    if (!mounted ||
-        !widget.appState.hasUnreadAlerts ||
-        widget.appState.hasShownPopup) {
-      return;
-    }
+  Future<void> _refresh() async {
+    setState(() => _refreshing = true);
+    await widget.appState.refreshFromBackend();
+    if (mounted) setState(() => _refreshing = false);
+  }
 
-    widget.appState.markPopupShown();
-    final latest = widget.appState.alerts.first;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${latest.title}: ${latest.message}'),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(label: 'View', onPressed: widget.onOpenAlerts),
-      ),
-    );
+  void _onRoomChanged(String? room) {
+    if (room == null) return;
+    setState(() {
+      _selectedRoom = room;
+      _index = 0;
+    });
+    if (_pageController.hasClients) _pageController.jumpToPage(0);
+    _syncActiveToIndex();
   }
 
   void _goTo(int i) {
-    final sensors = widget.appState.sensors;
+    final sensors = _filtered;
     if (i < 0 || i >= sensors.length) return;
     _pageController.animateToPage(
       i,
@@ -91,7 +98,7 @@ class _HomePageState extends State<HomePage> {
 
   // ----- Admin actions on the current sensor -----
   SensorDevice? get _current {
-    final sensors = widget.appState.sensors;
+    final sensors = _filtered;
     if (sensors.isEmpty) return null;
     return sensors[_index.clamp(0, sensors.length - 1)];
   }
@@ -159,184 +166,253 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final sensors = widget.appState.sensors;
+    final sensors = _filtered;
+
+    // Tint the background by the currently shown sensor's air quality.
+    final cur = _current;
+    final curReading =
+        (cur != null && cur.enabled) ? widget.appState.readingFor(cur.id) : null;
+    final tint = curReading != null
+        ? _aqiColorFor(curReading.aqi)
+        : const Color(0xFF94A3B8);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F8F5),
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _header(),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: sensors.isEmpty ? _emptyState() : _carousel(sensors),
-            ),
-          ],
+      appBar: _appBar(),
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              tint.withValues(alpha: 0.16),
+              const Color(0xFFF4F8F5),
+            ],
+            stops: const [0.0, 0.45],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          bottom: false,
+          child: Column(
+            children: [
+              _roomFilter(),
+              Expanded(
+                child: sensors.isEmpty ? _emptyState() : _carousel(sensors),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ======== Header (gradient) ========
-  Widget _header() {
-    const brandBlue = Color(0xFF1E88FF);
-    const brandGreen = Color(0xFF18A957);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          colors: [brandBlue, brandGreen],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Row(
+  // ======== AppBar (matches the Connect tab style) ========
+  PreferredSizeWidget _appBar() {
+    const blue = Color(0xFF1E5BFF);
+    return AppBar(
+      backgroundColor: blue,
+      elevation: 0,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.school_rounded,
-              color: Colors.white,
-              size: 30,
-            ),
+          const Text(
+            'BewAir',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'BewAir',
-                  style: TextStyle(
+          Text(
+            _displayName(),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ),
+      actions: [
+        // Refresh
+        IconButton(
+          tooltip: 'Refresh',
+          onPressed: _refreshing ? null : _refresh,
+          icon: _refreshing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
                     color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _displayName(),
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
+                )
+              : const Icon(Icons.refresh, color: Colors.white),
+        ),
+        // Notifications with unread badge
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            IconButton(
+              onPressed: () {
+                widget.appState.markAlertsRead();
+                widget.onOpenAlerts();
+              },
+              icon: const Icon(Icons.notifications_none_rounded,
+                  color: Colors.white),
             ),
-          ),
-          // Notifications
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                onPressed: () {
-                  widget.appState.markAlertsRead();
-                  widget.onOpenAlerts();
-                },
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: Colors.white,
-                  size: 28,
+            if (widget.appState.unreadAlertCount > 0)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${widget.appState.unreadAlertCount}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
-              if (widget.appState.unreadAlertCount > 0)
-                Positioned(
-                  right: 6,
-                  top: 4,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${widget.appState.unreadAlertCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+          ],
+        ),
+        // Overflow menu (admin device actions + list of devices)
+        if (widget.appState.isAdmin)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              final cur = _current;
+              if (value == 'list') {
+                _openDeviceList();
+              } else if (value == 'share' && cur != null) {
+                _openShare(cur);
+              } else if (value == 'reset' && cur != null) {
+                _confirmReset(cur);
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'share',
+                child: ListTile(
+                  leading: Icon(Icons.share),
+                  title: Text('Share Device'),
+                  contentPadding: EdgeInsets.zero,
                 ),
+              ),
+              const PopupMenuItem(
+                value: 'reset',
+                child: ListTile(
+                  leading: Icon(Icons.restart_alt, color: Colors.orange),
+                  title: Text('Reset Device'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'list',
+                child: ListTile(
+                  leading: Icon(Icons.list_alt),
+                  title: Text('List of Devices'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
           ),
-          // Overflow menu (admin device actions + list of devices)
-          if (widget.appState.isAdmin)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.white),
-              onSelected: (value) {
-                final cur = _current;
-                if (value == 'list') {
-                  _openDeviceList();
-                } else if (value == 'share' && cur != null) {
-                  _openShare(cur);
-                } else if (value == 'reset' && cur != null) {
-                  _confirmReset(cur);
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                  value: 'share',
-                  child: ListTile(
-                    leading: Icon(Icons.share),
-                    title: Text('Share Device'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+      ],
+    );
+  }
+
+  // ======== Room focus dropdown ========
+  Widget _roomFilter() {
+    final rooms = widget.appState.rooms;
+    final items = <String>['all', ...rooms];
+    // Guard against a stale selection after a room disappears.
+    final value = items.contains(_selectedRoom) ? _selectedRoom : 'all';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          elevation: 1,
+          shadowColor: Colors.black.withValues(alpha: 0.08),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 8),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isDense: true,
+                borderRadius: BorderRadius.circular(16),
+                icon: const Icon(Icons.keyboard_arrow_down,
+                    size: 22, color: Color(0xFF64748B)),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
                 ),
-                const PopupMenuItem(
-                  value: 'reset',
-                  child: ListTile(
-                    leading: Icon(Icons.restart_alt, color: Colors.orange),
-                    title: Text('Reset Device'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'list',
-                  child: ListTile(
-                    leading: Icon(Icons.list_alt),
-                    title: Text('List of Devices'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
+                items: items
+                    .map((r) => DropdownMenuItem(
+                          value: r,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.meeting_room_outlined,
+                                  size: 18, color: Color(0xFF1E5BFF)),
+                              const SizedBox(width: 8),
+                              Text(r == 'all' ? 'All Rooms' : r),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+                onChanged: _onRoomChanged,
+              ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.sensors_off, size: 56, color: Colors.black38),
-            const SizedBox(height: 12),
-            Text(
-              widget.appState.isAdmin
-                  ? 'No sensors yet.\nAdd one from the Connect tab.'
-                  : 'No sensors shared with you.\nAsk an admin to share one.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54),
+    final filtering = _selectedRoom != 'all';
+    final String message;
+    if (filtering) {
+      message = 'No sensors in "$_selectedRoom".';
+    } else if (widget.appState.isAdmin) {
+      message = 'No sensors yet.\nAdd one from the Connect tab.';
+    } else {
+      message = 'No sensors shared with you.\nAsk an admin to share one.';
+    }
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: 360,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.sensors_off,
+                        size: 56, color: Colors.black38),
+                    const SizedBox(height: 12),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -355,12 +431,18 @@ class _HomePageState extends State<HomePage> {
               setState(() {});
             },
             itemBuilder: (ctx, i) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: _SensorPanel(
-                  sensor: sensors[i],
-                  reading: widget.appState.readingFor(sensors[i].id),
-                  threshold: widget.appState.aqiThreshold,
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  children: [
+                    _SensorPanel(
+                      sensor: sensors[i],
+                      reading: widget.appState.readingFor(sensors[i].id),
+                      threshold: widget.appState.aqiThreshold,
+                    ),
+                  ],
                 ),
               );
             },
@@ -439,187 +521,610 @@ class _SensorPanel extends StatelessWidget {
     required this.threshold,
   });
 
-  Color _aqiColor(int aqi) {
-    if (aqi <= 50) return const Color(0xFF0A9A40);
-    if (aqi <= 100) return const Color(0xFFF59E0B);
-    if (aqi <= 150) return const Color(0xFFEA580C);
-    if (aqi <= 200) return const Color(0xFFDC2626);
-    if (aqi <= 300) return const Color(0xFF9333EA);
-    return const Color(0xFF7F1D1D);
-  }
-
   @override
   Widget build(BuildContext context) {
     final isOff = !sensor.enabled;
     final hasReading = reading != null && !isOff;
     final aqi = reading?.aqi ?? 0;
-    final color = !hasReading ? const Color(0xFF94A3B8) : _aqiColor(aqi);
-    final aboveThreshold = aqi > threshold;
+    final color = !hasReading ? const Color(0xFF94A3B8) : _aqiColorFor(aqi);
+
+    final components = <_Component>[
+      _Component('PM2.5', 'µg/m³', reading?.pm25, 1, Icons.blur_on, 'pm25'),
+      _Component('PM10', 'µg/m³', reading?.pm10, 1, Icons.grain, 'pm10'),
+      _Component('CO₂', 'ppm', reading?.co2, 0, Icons.air, 'co2'),
+      _Component('TVOC', 'µg/m³', reading?.tvoc, 0, Icons.bubble_chart_outlined, 'tvoc'),
+      _Component('Temperature', '°C', reading?.temperature, 1, Icons.device_thermostat, 'temp'),
+      _Component('Humidity', '%', reading?.humidity, 0, Icons.opacity, 'humidity'),
+    ];
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Title row
-        Row(
+        const Text(
+          'Current Air Quality',
+          style: TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // Radial AQI gauge
+        SizedBox(
+          width: 280,
+          height: 172,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // soft halo behind the dial
+              if (hasReading)
+                Align(
+                  alignment: const Alignment(0, 0.45),
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          color.withValues(alpha: 0.20),
+                          color.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _GaugePainter(aqi: aqi, hasData: hasReading),
+                ),
+              ),
+              // centered value
+              Align(
+                alignment: const Alignment(0, 0.18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isOff ? '—' : (hasReading ? '$aqi' : '--'),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 46,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'AQI',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Category word
+        Text(
+          isOff
+              ? 'Device Off'
+              : (hasReading ? reading!.aqiLabel : 'No Data'),
+          style: TextStyle(
+            color: color,
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Sensor name + room (AirNow-style "location")
+        Text(
+          sensor.name.isEmpty ? sensor.id : sensor.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        Text(
+          sensor.room.isEmpty ? '—' : sensor.room,
+          style: const TextStyle(color: Color(0xFF64748B)),
+        ),
+        const SizedBox(height: 20),
+
+        // Recommended actions for the current AQI (EPA AirNow guidance)
+        if (hasReading) ...[
+          _recommendedActionsCard(aqi, color),
+          const SizedBox(height: 20),
+        ],
+
+        // Component list — tap a row for an insight
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'Air Components',
+              style: TextStyle(
+                color: const Color(0xFF0F172A),
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        _componentsCard(context, components, hasReading),
+      ],
+    );
+  }
+
+  Widget _recommendedActionsCard(int aqi, Color color) {
+    final actions = _aqiActions(aqi);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shield_outlined, size: 20, color: color),
+              const SizedBox(width: 8),
+              const Text(
+                'Recommended Actions',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...actions.map(
+            (a) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, right: 8),
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      a,
+                      style: const TextStyle(
+                        color: Color(0xFF334155),
+                        fontSize: 13.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Text(
+            'Source: U.S. EPA AirNow',
+            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _componentsCard(
+      BuildContext context, List<_Component> comps, bool hasReading) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
           children: [
+            for (var i = 0; i < comps.length; i++) ...[
+              if (i > 0)
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: 16,
+                  endIndent: 16,
+                  color: Color(0xFFEEF2F6),
+                ),
+              _componentRow(context, comps[i], hasReading),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _componentRow(BuildContext context, _Component c, bool hasReading) {
+    final hasValue = hasReading && c.value != null;
+    final insight = hasValue ? _insightFor(c.key, c.value!) : null;
+    final dotColor = insight?.color ?? const Color(0xFFCBD5E1);
+    final valueText = hasValue ? c.value!.toStringAsFixed(c.decimals) : '--';
+
+    return InkWell(
+      onTap: hasValue ? () => _showInsight(context, c, insight!) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 14),
+            Icon(c.icon, size: 24, color: const Color(0xFF64748B)),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    sensor.name.isEmpty ? sensor.id : sensor.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    c.label,
                     style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       color: Color(0xFF0F172A),
+                      fontSize: 17,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
-                    sensor.room.isEmpty ? '—' : sensor.room,
-                    style: const TextStyle(color: Color(0xFF64748B)),
+                    insight?.level ?? 'No data',
+                    style: TextStyle(
+                      color: dotColor,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: isOff
-                    ? const Color(0xFFF1F5F9)
-                    : color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Text(
-                isOff
-                    ? 'Off'
-                    : (hasReading ? reading!.aqiLabel : 'No data'),
-                style: TextStyle(
-                  color: isOff ? const Color(0xFF64748B) : color,
-                  fontWeight: FontWeight.w700,
+            Text.rich(
+              TextSpan(
+                text: valueText,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: Color(0xFF0F172A),
                 ),
+                children: [
+                  TextSpan(
+                    text: '  ${c.unit}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                ],
               ),
             ),
+            if (hasValue)
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.chevron_right, color: Color(0xFFCBD5E1)),
+              ),
           ],
         ),
-        const SizedBox(height: 16),
-
-        // Big AQI card
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 28),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                'Air Quality Index',
-                style: TextStyle(color: Colors.black54, fontSize: 18),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                isOff ? '—' : (hasReading ? '$aqi' : '--'),
-                style: TextStyle(
-                  color: color,
-                  fontSize: 72,
-                  fontWeight: FontWeight.w800,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                isOff
-                    ? 'Device turned off'
-                    : (hasReading ? reading!.aqiLabel : 'No data yet'),
-                style: TextStyle(
-                  color: color,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (hasReading) ...[
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      aboveThreshold
-                          ? Icons.trending_up
-                          : Icons.check_circle_outline,
-                      color: aboveThreshold
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFF0A9A40),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      aboveThreshold ? 'Above threshold' : 'Within threshold',
-                      style: TextStyle(
-                        color: aboveThreshold
-                            ? const Color(0xFFDC2626)
-                            : const Color(0xFF0A9A40),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Metric tiles
-        Row(
-          children: [
-            _metric('CO₂', hasReading ? '${reading!.co2.toStringAsFixed(0)} ppm' : '--', Icons.air),
-            const SizedBox(width: 10),
-            _metric('PM2.5', hasReading ? reading!.pm25.toStringAsFixed(1) : '--', Icons.water_drop_outlined),
-            const SizedBox(width: 10),
-            _metric('Temp', hasReading ? '${reading!.temperature.toStringAsFixed(1)}°C' : '--', Icons.device_thermostat),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            _metric('PM10', hasReading ? reading!.pm10.toStringAsFixed(1) : '--', Icons.grain),
-            const SizedBox(width: 10),
-            _metric('Humidity', hasReading ? '${reading!.humidity.toStringAsFixed(0)}%' : '--', Icons.opacity),
-            const SizedBox(width: 10),
-            _metric('TVOC', hasReading ? reading!.tvoc.toStringAsFixed(0) : '--', Icons.bubble_chart_outlined),
-          ],
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _metric(String label, String value, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
+  void _showInsight(BuildContext context, _Component c, _Insight insight) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: const Color(0xFF1E88FF), size: 22),
-            const SizedBox(height: 6),
-            Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(c.icon, color: const Color(0xFF1E5BFF)),
+                const SizedBox(width: 10),
+                Text(
+                  c.label,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  c.value!.toStringAsFixed(c.decimals),
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w800,
+                    color: insight.color,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    c.unit,
+                    style: const TextStyle(color: Color(0xFF94A3B8)),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: insight.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    insight.level,
+                    style: TextStyle(
+                      color: insight.color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             Text(
-              value,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              insight.advice,
+              style: const TextStyle(
+                color: Color(0xFF334155),
+                height: 1.5,
+                fontSize: 15,
+              ),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+/// One air-quality component shown as a row + insight sheet.
+class _Component {
+  final String label;
+  final String unit;
+  final double? value;
+  final int decimals;
+  final IconData icon;
+  final String key;
+
+  const _Component(this.label, this.unit, this.value, this.decimals, this.icon, this.key);
+}
+
+class _Insight {
+  final String level;
+  final Color color;
+  final String advice;
+  const _Insight(this.level, this.color, this.advice);
+}
+
+// Severity palette (shared with AQI categories).
+const _cGood = Color(0xFF0A9A40);
+const _cModerate = Color(0xFFF59E0B);
+const _cUsg = Color(0xFFEA580C);
+const _cUnhealthy = Color(0xFFDC2626);
+const _cVeryUnhealthy = Color(0xFF9333EA);
+const _cHazardous = Color(0xFF7F1D1D);
+
+Color _aqiColorFor(int aqi) {
+  if (aqi <= 50) return _cGood;
+  if (aqi <= 100) return _cModerate;
+  if (aqi <= 150) return _cUsg;
+  if (aqi <= 200) return _cUnhealthy;
+  if (aqi <= 300) return _cVeryUnhealthy;
+  return _cHazardous;
+}
+
+// Recommended actions for the current AQI category (U.S. EPA AirNow guidance).
+List<String> _aqiActions(int aqi) {
+  if (aqi <= 50) {
+    return [
+      'Air quality is healthy — normal activities are fine.',
+      'Keep windows open for fresh-air ventilation.',
+    ];
+  }
+  if (aqi <= 100) {
+    return [
+      'Air quality is acceptable.',
+      'Unusually sensitive people should watch for symptoms during long or heavy activity.',
+    ];
+  }
+  if (aqi <= 150) {
+    return [
+      'Sensitive groups (children, elderly, asthma) should limit prolonged or heavy exertion.',
+      'Move strenuous activities indoors and improve ventilation.',
+    ];
+  }
+  if (aqi <= 200) {
+    return [
+      'Everyone should limit prolonged outdoor exertion.',
+      'Close windows and run a HEPA / MERV-13+ air purifier.',
+      'Sensitive groups should stay indoors.',
+    ];
+  }
+  if (aqi <= 300) {
+    return [
+      'Everyone should avoid outdoor exertion and stay indoors.',
+      'Seal the room and run an air purifier; wear an N95 if you must go out.',
+      'Avoid indoor pollution — no frying, vacuuming, or candles.',
+    ];
+  }
+  return [
+    'Health emergency — everyone stay indoors with windows shut and air filtered.',
+    'Wear an N95 outdoors; relocate to a clean-air shelter if the room cannot stay clean.',
+    'Seek medical help for any breathing difficulty.',
+  ];
+}
+
+/// Returns a qualitative reading + advice for a component value.
+_Insight _insightFor(String key, double v) {
+  switch (key) {
+    case 'pm25':
+      if (v <= 12) return const _Insight('Good', _cGood, 'Fine-particle (PM2.5) levels are healthy. No action needed.');
+      if (v <= 35.4) return const _Insight('Moderate', _cModerate, 'Acceptable. Unusually sensitive people should watch for symptoms during long exposure.');
+      if (v <= 55.4) return const _Insight('Unhealthy (SG)', _cUsg, 'Sensitive groups (asthma, children, elderly) may feel effects. Improve ventilation or run an air purifier.');
+      if (v <= 150.4) return const _Insight('Unhealthy', _cUnhealthy, 'Everyone may start to feel effects. Reduce indoor sources (smoke, cooking) and filter the air.');
+      return const _Insight('Very Unhealthy', _cVeryUnhealthy, 'Heavy fine-particle pollution. Limit exposure and filter the air immediately.');
+    case 'pm10':
+      if (v <= 54) return const _Insight('Good', _cGood, 'Coarse-particle (PM10) levels are healthy.');
+      if (v <= 154) return const _Insight('Moderate', _cModerate, 'Acceptable dust levels. Sensitive people should limit long exposure.');
+      if (v <= 254) return const _Insight('Unhealthy (SG)', _cUsg, 'Elevated dust. Sensitive groups should improve ventilation.');
+      if (v <= 354) return const _Insight('Unhealthy', _cUnhealthy, 'High dust levels. Reduce sources and filter the air.');
+      return const _Insight('Very Unhealthy', _cVeryUnhealthy, 'Very high dust. Limit exposure and filter the air now.');
+    case 'co2':
+      if (v <= 800) return const _Insight('Good', _cGood, 'The space is well-ventilated.');
+      if (v <= 1000) return const _Insight('Moderate', _cModerate, 'Acceptable, but bring in fresh air if people feel drowsy.');
+      if (v <= 1500) return const _Insight('Stuffy', _cUsg, 'Air is getting stuffy. Increase ventilation.');
+      if (v <= 2000) return const _Insight('Poor', _cUnhealthy, 'Poor ventilation. Open windows or doors to bring CO₂ down.');
+      return const _Insight('Very Poor', _cVeryUnhealthy, 'High CO₂ can cause headaches and fatigue. Ventilate the room immediately.');
+    case 'tvoc':
+      if (v <= 300) return const _Insight('Good', _cGood, 'Low levels of volatile organic compounds.');
+      if (v <= 500) return const _Insight('Moderate', _cModerate, 'Acceptable. Ventilate if you notice odors.');
+      if (v <= 1000) return const _Insight('Elevated', _cUsg, 'Elevated VOCs. Increase fresh air and check sources (cleaners, paint, new furniture).');
+      if (v <= 3000) return const _Insight('High', _cUnhealthy, 'High VOCs. Ventilate and remove the source.');
+      return const _Insight('Very High', _cVeryUnhealthy, 'Very high VOCs. Ventilate the room now and find the source.');
+    case 'temp':
+      if (v >= 20 && v <= 26) return const _Insight('Comfortable', _cGood, 'Temperature is in the comfortable range (20–26 °C).');
+      if (v >= 17 && v < 20) return const _Insight('Cool', _cModerate, 'Slightly cool. A little below the ideal 20–26 °C range.');
+      if (v > 26 && v <= 30) return const _Insight('Warm', _cModerate, 'Slightly warm. A little above the ideal 20–26 °C range.');
+      if (v < 17) return const _Insight('Cold', _cUnhealthy, 'Too cold for comfort. Consider heating the room.');
+      return const _Insight('Hot', _cUnhealthy, 'Too warm for comfort. Improve cooling or ventilation.');
+    case 'humidity':
+      if (v >= 30 && v <= 60) return const _Insight('Comfortable', _cGood, 'Humidity is in the healthy range (30–60%).');
+      if (v >= 20 && v < 30) return const _Insight('Dry', _cModerate, 'A bit dry. Below the ideal 30–60% range.');
+      if (v > 60 && v <= 70) return const _Insight('Humid', _cModerate, 'A bit humid. Above the ideal 30–60% range.');
+      if (v < 20) return const _Insight('Too Dry', _cUnhealthy, 'Very dry air can irritate eyes, skin, and airways. Consider a humidifier.');
+      return const _Insight('Too Humid', _cUnhealthy, 'High humidity encourages mold and dust mites. Improve ventilation or dehumidify.');
+    default:
+      return const _Insight('—', Color(0xFF94A3B8), 'No insight available.');
+  }
+}
+
+/// Semicircular AQI gauge: equal-width category segments, a filled fan up to
+/// the current value, and a white triangular needle (AirNow style).
+class _GaugePainter extends CustomPainter {
+  final int aqi;
+  final bool hasData;
+
+  _GaugePainter({required this.aqi, required this.hasData});
+
+  // Equal-width category segments (each gets the same slice of the arc).
+  static const _bounds = <double>[0, 50, 100, 150, 200, 300, 500];
+  static const _bandColors = <Color>[
+    Color(0xFF0A9A40), Color(0xFFF59E0B), Color(0xFFEA580C),
+    Color(0xFFDC2626), Color(0xFF9333EA), Color(0xFF7F1D1D),
+  ];
+
+  int get _segCount => _bandColors.length;
+
+  double _angleFor(double v) {
+    final span = math.pi / _segCount;
+    for (var i = 0; i < _segCount; i++) {
+      if (v <= _bounds[i + 1] || i == _segCount - 1) {
+        final lo = _bounds[i], hi = _bounds[i + 1];
+        final frac = ((v - lo) / (hi - lo)).clamp(0.0, 1.0);
+        return math.pi + (i + frac) * span;
+      }
+    }
+    return math.pi;
+  }
+
+  Color _colorFor(double v) {
+    for (var i = 0; i < _segCount; i++) {
+      if (v <= _bounds[i + 1]) return _bandColors[i];
+    }
+    return _bandColors.last;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 15.0;
+    final center = Offset(size.width / 2, size.height - 6);
+    final radius = (size.width - stroke) / 2 - 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final span = math.pi / _segCount;
+    const gap = 0.020; // small gap between segments
+
+    // Colored category segments
+    for (var i = 0; i < _segCount; i++) {
+      final start = math.pi + i * span + gap / 2;
+      final sweep = span - gap;
+      final paint = Paint()
+        ..color = hasData
+            ? _bandColors[i]
+            : _bandColors[i].withValues(alpha: 0.20)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(rect, start, sweep, false, paint);
+    }
+
+    if (!hasData) return;
+
+    // Marker knob sitting on the arc at the current value — keeps the dial
+    // centre clear for the big number (no needle/fan overlap).
+    final v = aqi.toDouble();
+    final markerAngle = _angleFor(v);
+    final cat = _colorFor(v);
+    final dir = Offset(math.cos(markerAngle), math.sin(markerAngle));
+    final markerCenter = center + dir * radius;
+
+    // outer glow ring
+    canvas.drawCircle(
+      markerCenter,
+      14,
+      Paint()..color = cat.withValues(alpha: 0.18),
+    );
+    // white knob with colored border
+    canvas.drawCircle(markerCenter, 10, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      markerCenter,
+      10,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..color = cat,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GaugePainter old) =>
+      old.aqi != aqi || old.hasData != hasData;
 }
