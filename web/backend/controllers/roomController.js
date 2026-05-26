@@ -1,4 +1,5 @@
 const Room = require('../models/RoomModel')
+const Device = require('../models/DeviceModel')
 const logAudit = require('../utils/logAudit')
 
 // GET /api/room — list all rooms (any authenticated user; mobile uses this for the dropdown)
@@ -41,11 +42,24 @@ const updateRoom = async (req, res) => {
     return res.status(400).json({ error: 'Room name is required' })
   }
   try {
-    const room = await Room.findByIdAndUpdate(id, { name: name.trim() }, { new: true })
-    if (!room) return res.status(404).json({ error: 'Room not found' })
+    // Capture the old name first so we can cascade the rename to devices,
+    // which reference their room by name (not by id).
+    const existing = await Room.findById(id)
+    if (!existing) return res.status(404).json({ error: 'Room not found' })
+    const oldName = existing.name
+    const newName = name.trim()
+
+    const room = await Room.findByIdAndUpdate(id, { name: newName }, { new: true })
+
+    // Keep devices in sync: any device still pointing at the old room name
+    // gets moved to the new name so it doesn't appear as a separate room.
+    if (oldName !== newName) {
+      await Device.updateMany({ room: oldName }, { room: newName })
+    }
+
     logAudit({
       module: 'Classroom',
-      action: `Room renamed to "${room.name}" by ${req.user.email}`,
+      action: `Room renamed from "${oldName}" to "${room.name}" by ${req.user.email}`,
       user: req.user.email,
     })
     res.status(200).json(room)
