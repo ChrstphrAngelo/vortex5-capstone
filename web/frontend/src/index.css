@@ -788,19 +788,19 @@ form.signup, form.login {
 .auth-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 28px;
+  gap: 18px;
+  margin-bottom: 32px;
 }
 
 .auth-logo-img {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
-  border-radius: 14px;
+  border-radius: 16px;
 }
 
 .auth-brand-name {
-  font-size: 26px;
+  font-size: 36px;
   font-weight: 800;
   color: var(--color-text-primary);
   line-height: 1.1;
@@ -814,7 +814,7 @@ form.signup, form.login {
 
 /* Headings */
 .auth-heading {
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 800;
   color: #111827;
   margin: 0 0 6px;
