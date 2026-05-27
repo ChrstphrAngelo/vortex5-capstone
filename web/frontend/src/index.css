@@ -1269,6 +1269,224 @@ input, select {
   font-weight: 600;
 }
 
+/* ============================================================
+   AQI DETAIL — ring gauge + metric cards + sparklines
+   ============================================================ */
+
+.aqi-detail-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* ── Hero card ── */
+.aqi-hero-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-xs);
+}
+
+/* Ring gauge */
+.aqi-hero-gauge-wrap {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  flex-shrink: 0;
+}
+
+.aqi-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.aqi-ring-track {
+  stroke: var(--color-border);
+}
+
+.aqi-hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.aqi-hero-number {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.aqi-hero-sublabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+/* Body (category + temp/hum + spark) */
+.aqi-hero-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aqi-hero-category-pill {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  border: 1px solid transparent;
+  align-self: flex-start;
+}
+
+.aqi-hero-support {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.aqi-hero-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.aqi-hero-metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-text-tertiary);
+}
+
+.aqi-hero-metric-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.aqi-hero-spark-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aqi-hero-spark-caption {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+
+/* ── 8-metric grid ── */
+.aqi-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+/* ── Individual metric card ── */
+.aqi-mc {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--mc-accent, #94a3b8);
+  border-radius: var(--radius-md);
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.3s;
+}
+
+.aqi-mc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.aqi-mc-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.aqi-mc-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.aqi-mc-value {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
+
+.aqi-mc-unit {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+}
+
+/* Fill bar */
+.aqi-mc-bar-track {
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.aqi-mc-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+/* Sparkline */
+.aqi-mc-spark {
+  margin-top: 4px;
+  opacity: 0.75;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .aqi-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .aqi-hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .aqi-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* ================= TABLE CARD ================= */
 .table-card {
   background: var(--color-surface);

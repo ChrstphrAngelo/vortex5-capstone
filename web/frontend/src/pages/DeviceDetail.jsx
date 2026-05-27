@@ -14,6 +14,7 @@ const DeviceDetail = () => {
   const [reading, setReading] = useState(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [history, setHistory] = useState([])
 
   // --- Sharing state (admin only) ---
   const [sharedUsers, setSharedUsers] = useState([])
@@ -55,9 +56,34 @@ const DeviceDetail = () => {
       }
     }
 
+    // Fetch recent history once for sparklines (last 30 readings for this device)
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch('/api/aqi', {
+          headers: { Authorization: `Bearer ${user.token}` }
+        })
+        if (res.ok) {
+          const all = await res.json()
+          // Filter to this device, already sorted newest-first (limit 500)
+          const deviceHistory = all
+            .filter(r => r.deviceId === deviceId)
+            .slice(0, 30)
+          setHistory(deviceHistory)
+        }
+      } catch (err) {
+        console.error('history:', err)
+      }
+    }
+
     fetchData()
+    fetchHistory()
     const interval = setInterval(fetchData, 10000)
-    return () => clearInterval(interval)
+    // Refresh history every 2 minutes
+    const histInterval = setInterval(fetchHistory, 120000)
+    return () => {
+      clearInterval(interval)
+      clearInterval(histInterval)
+    }
   }, [user, deviceId])
 
   // ---------- Fetch shared users (admin only) ----------
@@ -201,11 +227,14 @@ const DeviceDetail = () => {
         )}
       </div>
 
-      <AqiDetails aqi={displayReading || {
-        Aqi: null, Temperature: null, Humidity: null,
-        PM1: null, PM25: null, PM10: null,
-        TVOC: null, CO2: null, Formaldehyde: null,
-      }} />
+      <AqiDetails
+        aqi={displayReading || {
+          Aqi: null, Temperature: null, Humidity: null,
+          PM1: null, PM25: null, PM10: null,
+          TVOC: null, CO2: null, Formaldehyde: null,
+        }}
+        history={history}
+      />
 
       {isOnline && <RecommendedActions reading={displayReading} />}
 
