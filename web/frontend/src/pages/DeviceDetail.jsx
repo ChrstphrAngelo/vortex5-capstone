@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../hooks/useAuthContext'
-import { ArrowLeft, UserPlus, UserX, Users, Loader2 } from 'lucide-react'
+import { ArrowLeft, UserPlus, UserX, Users, Loader2, X } from 'lucide-react'
 import AqiDetails from '../components/AqiDetails'
 import RecommendedActions from '../components/RecommendedActions'
 
@@ -17,6 +17,7 @@ const DeviceDetail = () => {
   const [history, setHistory] = useState([])
 
   // --- Sharing state (admin only) ---
+  const [shareOpen, setShareOpen] = useState(false)
   const [sharedUsers, setSharedUsers] = useState([])
   const [shareEmail, setShareEmail] = useState('')
   const [shareLoading, setShareLoading] = useState(false)
@@ -30,24 +31,18 @@ const DeviceDetail = () => {
     const fetchData = async () => {
       try {
         const [devRes, aqiRes] = await Promise.all([
-          fetch('/api/device', {
-            headers: { Authorization: `Bearer ${user.token}` }
-          }),
-          fetch('/api/aqi/latest', {
-            headers: { Authorization: `Bearer ${user.token}` }
-          }),
+          fetch('/api/device', { headers: { Authorization: `Bearer ${user.token}` } }),
+          fetch('/api/aqi/latest', { headers: { Authorization: `Bearer ${user.token}` } }),
         ])
 
         if (devRes.ok) {
           const devices = await devRes.json()
-          const d = devices.find(x => x.deviceId === deviceId)
-          setDevice(d || null)
+          setDevice(devices.find(x => x.deviceId === deviceId) || null)
         }
 
         if (aqiRes.ok) {
           const readings = await aqiRes.json()
-          const r = readings.find(x => x.deviceId === deviceId)
-          setReading(r || null)
+          setReading(readings.find(x => x.deviceId === deviceId) || null)
         }
 
         setLastUpdated(new Date())
@@ -56,57 +51,37 @@ const DeviceDetail = () => {
       }
     }
 
-    // Fetch recent history once for sparklines (last 30 readings for this device)
     const fetchHistory = async () => {
       try {
-        const res = await fetch('/api/aqi', {
-          headers: { Authorization: `Bearer ${user.token}` }
-        })
+        const res = await fetch('/api/aqi', { headers: { Authorization: `Bearer ${user.token}` } })
         if (res.ok) {
           const all = await res.json()
-          // Filter to this device, already sorted newest-first (limit 500)
-          const deviceHistory = all
-            .filter(r => r.deviceId === deviceId)
-            .slice(0, 30)
-          setHistory(deviceHistory)
+          setHistory(all.filter(r => r.deviceId === deviceId).slice(0, 30))
         }
-      } catch (err) {
-        console.error('history:', err)
-      }
+      } catch (err) { console.error('history:', err) }
     }
 
     fetchData()
     fetchHistory()
-    const interval = setInterval(fetchData, 10000)
-    // Refresh history every 2 minutes
-    const histInterval = setInterval(fetchHistory, 120000)
-    return () => {
-      clearInterval(interval)
-      clearInterval(histInterval)
-    }
+    const iv1 = setInterval(fetchData, 10000)
+    const iv2 = setInterval(fetchHistory, 120000)
+    return () => { clearInterval(iv1); clearInterval(iv2) }
   }, [user, deviceId])
 
-  // ---------- Fetch shared users (admin only) ----------
+  // ---------- Load staff with access ----------
   const loadSharedUsers = useCallback(async () => {
     if (!user || user.role !== 'admin') return
     try {
       const res = await fetch(`/api/device/${deviceId}/users`, {
         headers: { Authorization: `Bearer ${user.token}` }
       })
-      if (res.ok) {
-        const data = await res.json()
-        setSharedUsers(data)
-      }
-    } catch (err) {
-      console.error('loadSharedUsers:', err)
-    }
+      if (res.ok) setSharedUsers(await res.json())
+    } catch (err) { console.error('loadSharedUsers:', err) }
   }, [user, deviceId])
 
-  useEffect(() => {
-    loadSharedUsers()
-  }, [loadSharedUsers])
+  useEffect(() => { loadSharedUsers() }, [loadSharedUsers])
 
-  // ---------- Share device ----------
+  // ---------- Share ----------
   const handleShare = async (e) => {
     e.preventDefault()
     const email = shareEmail.trim()
@@ -116,19 +91,16 @@ const DeviceDetail = () => {
     try {
       const res = await fetch(`/api/device/${deviceId}/share`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
         body: JSON.stringify({ email })
       })
       const json = await res.json()
       if (res.ok) {
         setShareEmail('')
-        setShareMsg({ text: json.message || 'Device shared successfully.', type: 'ok' })
+        setShareMsg({ text: json.message || 'Access granted.', type: 'ok' })
         await loadSharedUsers()
       } else {
-        setShareMsg({ text: json.error || 'Failed to share device.', type: 'err' })
+        setShareMsg({ text: json.error || 'Failed to share.', type: 'err' })
       }
     } catch {
       setShareMsg({ text: 'Network error. Please try again.', type: 'err' })
@@ -138,17 +110,13 @@ const DeviceDetail = () => {
     }
   }
 
-  // ---------- Revoke access ----------
+  // ---------- Revoke ----------
   const handleRevoke = async (email) => {
     setShareLoading(true)
-    setShareMsg({ text: '', type: '' })
     try {
       const res = await fetch(`/api/device/${deviceId}/unshare`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
         body: JSON.stringify({ email })
       })
       const json = await res.json()
@@ -157,7 +125,7 @@ const DeviceDetail = () => {
         setRevokeTarget(null)
         await loadSharedUsers()
       } else {
-        setShareMsg({ text: json.error || 'Failed to revoke access.', type: 'err' })
+        setShareMsg({ text: json.error || 'Failed to revoke.', type: 'err' })
       }
     } catch {
       setShareMsg({ text: 'Network error. Please try again.', type: 'err' })
@@ -176,17 +144,13 @@ const DeviceDetail = () => {
         <button className="dash-back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} /> Back
         </button>
-        <p style={{ marginTop: 16 }}>
-          Device not found, or you don't have access to it.
-        </p>
+        <p style={{ marginTop: 16 }}>Device not found, or you don't have access to it.</p>
       </div>
     )
   }
 
-  // Determine if device is currently online (lastSeen < 30s)
   const lastSeen = device.lastSeen ? new Date(device.lastSeen).getTime() : 0
   const isOnline = device.status === 'online' && (Date.now() - lastSeen) < 30 * 1000
-
   const displayReading = isOnline && reading ? reading : null
 
   return (
@@ -195,6 +159,7 @@ const DeviceDetail = () => {
         <ArrowLeft size={18} /> Back to devices
       </button>
 
+      {/* ── Header ── */}
       <div className="dash-header" style={{ marginTop: 16 }}>
         <div>
           <h1 className="dash-title">{device.name}</h1>
@@ -202,31 +167,43 @@ const DeviceDetail = () => {
             {device.room}
             {!isOnline && (
               <span style={{
-                marginLeft: 12,
-                padding: '3px 10px',
-                background: '#fee2e2',
-                color: '#dc2626',
-                borderRadius: 999,
-                fontSize: 12,
-                fontWeight: 700,
-              }}>
-                Inactive
-              </span>
+                marginLeft: 12, padding: '3px 10px',
+                background: '#fee2e2', color: '#dc2626',
+                borderRadius: 999, fontSize: 12, fontWeight: 700,
+              }}>Inactive</span>
             )}
           </p>
         </div>
-        {lastUpdated && (
-          <div className="dash-live">
-            <span
-              className="dash-live-dot"
-              style={!isOnline ? { background: '#94a3b8', animation: 'none', boxShadow: 'none' } : undefined}
-            />
-            {isOnline ? 'Live · ' : 'Paused · '}
-            Updated {lastUpdated.toLocaleTimeString()}
-          </div>
-        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Share button — admin only */}
+          {user?.role === 'admin' && (
+            <button
+              className="btn btn-secondary share-header-btn"
+              onClick={() => setShareOpen(true)}
+            >
+              <Users size={15} />
+              Share
+              {sharedUsers.length > 0 && (
+                <span className="share-header-count">{sharedUsers.length}</span>
+              )}
+            </button>
+          )}
+
+          {lastUpdated && (
+            <div className="dash-live">
+              <span
+                className="dash-live-dot"
+                style={!isOnline ? { background: '#94a3b8', animation: 'none', boxShadow: 'none' } : undefined}
+              />
+              {isOnline ? 'Live · ' : 'Paused · '}
+              Updated {lastUpdated.toLocaleTimeString()}
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* ── Data ── */}
       <AqiDetails
         aqi={displayReading || {
           Aqi: null, Temperature: null, Humidity: null,
@@ -241,114 +218,122 @@ const DeviceDetail = () => {
       {!isOnline && (
         <div className="dash-empty" style={{ marginTop: 16 }}>
           This device is currently inactive. The last reading was{' '}
-          {device.lastSeen
-            ? new Date(device.lastSeen).toLocaleString()
-            : 'never'}
-          . Data will resume when the device comes back online.
+          {device.lastSeen ? new Date(device.lastSeen).toLocaleString() : 'never'}.
+          Data will resume when the device comes back online.
         </div>
       )}
 
-      {/* ====== Device Access (admin only) ====== */}
-      {user?.role === 'admin' && (
-        <div className="dash-section device-access-section">
-          <div className="dash-section-head">
-            <h2><Users size={18} style={{ verticalAlign: 'middle', marginRight: 6 }} />Device Access</h2>
-            <span className="dash-section-count">{sharedUsers.length} user{sharedUsers.length !== 1 ? 's' : ''}</span>
-          </div>
+      {/* ══════════════════════════════════════════
+          Share Modal
+      ══════════════════════════════════════════ */}
+      {shareOpen && (
+        <div className="modal-overlay" onClick={() => { setShareOpen(false); setRevokeTarget(null) }}>
+          <div className="share-modal" onClick={e => e.stopPropagation()}>
 
-          {/* Feedback message */}
-          {shareMsg.text && (
-            <div className={`share-msg share-msg-${shareMsg.type}`}>
-              {shareMsg.text}
+            {/* Modal header */}
+            <div className="share-modal-head">
+              <div>
+                <h3 className="share-modal-title">
+                  <Users size={18} /> Device Access
+                </h3>
+                <p className="share-modal-sub">
+                  {device.name} · {device.room}
+                </p>
+              </div>
+              <button className="share-modal-close" onClick={() => { setShareOpen(false); setRevokeTarget(null) }}>
+                <X size={18} />
+              </button>
             </div>
-          )}
 
-          {/* Add user form */}
-          <form className="share-form" onSubmit={handleShare}>
-            <input
-              type="email"
-              className="search-input share-email-input"
-              placeholder="Enter user email to grant access..."
-              value={shareEmail}
-              onChange={e => setShareEmail(e.target.value)}
-              disabled={shareLoading}
-            />
-            <button
-              type="submit"
-              className="btn btn-primary share-btn"
-              disabled={shareLoading || !shareEmail.trim()}
-            >
-              {shareLoading
-                ? <Loader2 size={15} className="share-spinner" />
-                : <UserPlus size={15} />
-              }
-              Share
-            </button>
-          </form>
-
-          {/* Users list */}
-          {sharedUsers.length === 0 ? (
-            <div className="dash-empty" style={{ marginTop: 12 }}>
-              No users have access to this device yet.
+            {/* Info note */}
+            <div className="share-modal-note">
+              Admins always have full access. Only staff members need to be shared.
             </div>
-          ) : (
-            <div className="share-user-list">
-              {sharedUsers.map(u => (
-                <div key={u._id} className="share-user-row">
-                  <div className="share-user-avatar">
-                    {(u.firstName?.[0] || u.email[0]).toUpperCase()}
-                  </div>
-                  <div className="share-user-info">
-                    <div className="share-user-name">
-                      {u.firstName && u.lastName
-                        ? `${u.firstName} ${u.lastName}`
-                        : u.email}
-                    </div>
-                    <div className="share-user-email">{u.email}</div>
-                  </div>
-                  <span className={`share-role-badge share-role-${u.role}`}>
-                    {u.role}
-                  </span>
-                  <button
-                    className="icon-btn share-revoke-btn"
-                    title="Revoke access"
-                    onClick={() => setRevokeTarget(u.email)}
-                    disabled={shareLoading}
-                  >
-                    <UserX size={16} />
-                  </button>
+
+            {/* Feedback */}
+            {shareMsg.text && (
+              <div className={`share-msg share-msg-${shareMsg.type}`}>
+                {shareMsg.text}
+              </div>
+            )}
+
+            {/* Staff list */}
+            <div className="share-modal-list">
+              {sharedUsers.length === 0 ? (
+                <div className="share-modal-empty">
+                  No staff members have been given access yet.
                 </div>
-              ))}
+              ) : (
+                sharedUsers.map(u => (
+                  <div key={u._id} className="share-user-row">
+                    <div className="share-user-avatar">
+                      {(u.firstName?.[0] || u.email[0]).toUpperCase()}
+                    </div>
+                    <div className="share-user-info">
+                      <div className="share-user-name">
+                        {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.email}
+                      </div>
+                      <div className="share-user-email">{u.email}</div>
+                    </div>
+                    <span className="share-role-badge share-role-staff">Staff</span>
+                    {revokeTarget === u.email ? (
+                      <div className="share-revoke-confirm">
+                        <span>Remove?</span>
+                        <button
+                          className="btn btn-danger share-confirm-yes"
+                          onClick={() => handleRevoke(u.email)}
+                          disabled={shareLoading}
+                        >
+                          {shareLoading ? <Loader2 size={13} className="share-spinner" /> : 'Yes'}
+                        </button>
+                        <button
+                          className="btn btn-secondary share-confirm-no"
+                          onClick={() => setRevokeTarget(null)}
+                          disabled={shareLoading}
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="icon-btn share-revoke-btn"
+                        title="Remove access"
+                        onClick={() => setRevokeTarget(u.email)}
+                        disabled={shareLoading}
+                      >
+                        <UserX size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
-          )}
-        </div>
-      )}
 
-      {/* ====== Revoke confirm modal ====== */}
-      {revokeTarget && (
-        <div className="modal-overlay" onClick={() => setRevokeTarget(null)}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Revoke Access</h3>
+            {/* Add user form */}
+            <div className="share-modal-footer">
+              <form className="share-form" onSubmit={handleShare}>
+                <input
+                  type="email"
+                  className="search-input share-email-input"
+                  placeholder="Staff email address..."
+                  value={shareEmail}
+                  onChange={e => setShareEmail(e.target.value)}
+                  disabled={shareLoading}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary share-btn"
+                  disabled={shareLoading || !shareEmail.trim()}
+                >
+                  {shareLoading
+                    ? <Loader2 size={15} className="share-spinner" />
+                    : <UserPlus size={15} />
+                  }
+                  Add
+                </button>
+              </form>
             </div>
-            <div className="modal-body">
-              <p>
-                Remove <strong>{revokeTarget}</strong> from this device?
-                They will no longer be able to view its data.
-              </p>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setRevokeTarget(null)}>
-                Cancel
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={() => handleRevoke(revokeTarget)}
-                disabled={shareLoading}
-              >
-                {shareLoading ? 'Revoking...' : 'Revoke Access'}
-              </button>
-            </div>
+
           </div>
         </div>
       )}

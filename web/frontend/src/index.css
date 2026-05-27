@@ -3402,79 +3402,119 @@ input, select {
   color: var(--color-text-primary);
 }
 
-/* ====== Device Access / Share Section ====== */
-.device-access-section {
-  margin-top: 24px;
-}
+/* ====== Device Share — header button + modal ====== */
 
-.share-form {
-  display: flex;
-  gap: 10px;
-  margin: 16px 0 12px;
-  align-items: center;
-}
-
-.share-email-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.share-btn {
+/* "Share" button in the device header */
+.share-header-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
-  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
 }
 
-.share-spinner {
-  animation: spin 0.8s linear infinite;
+.share-header-count {
+  background: var(--brand-blue);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 6px;
+  line-height: 1.4;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* Modal panel */
+.share-modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  overflow: hidden;
 }
 
-.share-msg {
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
+.share-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 20px 14px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
-.share-msg-ok {
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+.share-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--color-text-primary);
 }
 
-.share-msg-err {
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+.share-modal-sub {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin: 0;
 }
 
-.share-user-list {
+.share-modal-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+}
+.share-modal-close:hover { background: var(--color-surface-3); color: var(--color-text-primary); }
+
+.share-modal-note {
+  margin: 0;
+  padding: 10px 20px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.share-modal-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 8px;
 }
 
+.share-modal-empty {
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.share-modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+/* Shared user rows */
 .share-user-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  transition: background var(--t-fast);
-}
-
-.share-user-row:hover {
-  background: var(--color-surface-3);
 }
 
 .share-user-avatar {
@@ -3518,13 +3558,7 @@ input, select {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  text-transform: capitalize;
   flex-shrink: 0;
-}
-
-.share-role-admin {
-  background: #dbeafe;
-  color: #1d4ed8;
 }
 
 .share-role-staff {
@@ -3532,15 +3566,68 @@ input, select {
   color: #15803d;
 }
 
+/* Inline revoke confirm */
+.share-revoke-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.share-confirm-yes,
+.share-confirm-no {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+
 .share-revoke-btn {
   color: #dc2626 !important;
   flex-shrink: 0;
 }
-
 .share-revoke-btn:hover {
   background: #fee2e2 !important;
   color: #dc2626 !important;
 }
+
+/* Add-user form inside modal footer */
+.share-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.share-email-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 10px 16px;
+}
+
+/* Spinner */
+.share-spinner {
+  animation: share-spin 0.8s linear infinite;
+}
+@keyframes share-spin { to { transform: rotate(360deg); } }
+
+/* Feedback */
+.share-msg {
+  padding: 9px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 500;
+  margin: 0 20px 4px;
+  flex-shrink: 0;
+}
+.share-msg-ok  { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.share-msg-err { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
 
 /* ---- Dashboard modal ---- */
 .dash-modal-overlay {

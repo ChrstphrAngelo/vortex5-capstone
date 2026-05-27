@@ -91,11 +91,13 @@ const unshareDevice = async (req, res) => {
   }
 }
 
-// GET /api/device/:deviceId/users — admin-only: list users who have access to a device
+// GET /api/device/:deviceId/users — admin-only: list staff users who have access to a device.
+// Admins are excluded because they already have full visibility of all devices.
 const getDeviceUsers = async (req, res) => {
   const { deviceId } = req.params
   try {
-    const users = await User.find({ devices: deviceId }).select('email firstName lastName role')
+    const users = await User.find({ devices: deviceId, role: { $ne: 'admin' } })
+      .select('email firstName lastName role')
     res.status(200).json(users)
   } catch (error) {
     res.status(500).json({ error: error.message })
