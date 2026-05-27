@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:vortex5_application_2/app_state.dart';
 import 'package:vortex5_application_2/pages/provisioning/provisioning_scan_page.dart';
 
@@ -33,19 +34,23 @@ class _DevicePageState extends State<DevicePage> {
       appBar: AppBar(
         backgroundColor: _blue,
         elevation: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            Image.asset(
+              'assets/images/bewair_logo.png',
+              height: 28,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 10),
             Text(
-              'BewAir',
-              style: TextStyle(
+              'Connect',
+              style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
+                fontSize: 22,
+                letterSpacing: 1.4,
               ),
-            ),
-            Text(
-              'Connect a Sensor',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
@@ -61,7 +66,7 @@ class _DevicePageState extends State<DevicePage> {
     );
   }
 
-  // ======== Centered "Add BewAir Sensor" card (admin) ========
+  // ── Admin card ────────────────────────────────────────────────────────────
   Widget _addCard() {
     return Container(
       width: double.infinity,
@@ -82,7 +87,6 @@ class _DevicePageState extends State<DevicePage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Icon badge
           Container(
             width: 96,
             height: 96,
@@ -90,11 +94,7 @@ class _DevicePageState extends State<DevicePage> {
               color: _blue.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.wifi_tethering,
-              color: _blue,
-              size: 48,
-            ),
+            child: const Icon(Icons.wifi_tethering, color: _blue, size: 48),
           ),
           const SizedBox(height: 24),
           const Text(
@@ -105,16 +105,18 @@ class _DevicePageState extends State<DevicePage> {
               color: Color(0xFF0F172A),
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Power on your BewAir sensor and make sure it is in '
-            'provisioning mode (the "BewAir-XXXX" Wi-Fi should appear).',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 14,
-              height: 1.4,
-            ),
+          const SizedBox(height: 16),
+          const _SetupStep(
+            number: '1',
+            text: 'Plug in your BewAir sensor and wait a few seconds.',
+          ),
+          const _SetupStep(
+            number: '2',
+            text: 'Allow location permission if prompted.',
+          ),
+          const _SetupStep(
+            number: '3',
+            text: 'Tap below — the app will find your sensor and guide you through the rest.',
           ),
           const SizedBox(height: 28),
           SizedBox(
@@ -142,7 +144,7 @@ class _DevicePageState extends State<DevicePage> {
     );
   }
 
-  // ======== Non-admin notice ========
+  // ── Non-admin notice ──────────────────────────────────────────────────────
   Widget _viewerNotice() {
     return Container(
       width: double.infinity,
@@ -171,7 +173,57 @@ class _DevicePageState extends State<DevicePage> {
             'Connecting new sensors is restricted to admin accounts. '
             'Sensors shared with you appear on the Home tab.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF64748B), fontSize: 14, height: 1.4),
+            style: TextStyle(
+                color: Color(0xFF64748B), fontSize: 14, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Numbered step row ─────────────────────────────────────────────────────────
+class _SetupStep extends StatelessWidget {
+  final String number;
+  final String text;
+
+  const _SetupStep({required this.number, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E5BFF),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFF475569),
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
           ),
         ],
       ),

@@ -14,22 +14,24 @@ class AlertPage extends StatefulWidget {
 
 class _AlertPageState extends State<AlertPage> {
   int _filter = 0;
-  bool _loading = false;
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadHistory());
   }
 
   Future<void> _loadHistory() async {
-    setState(() => _loading = true);
-    await widget.appState.fetchAlertHistory();
-    if (mounted) setState(() => _loading = false);
+    setState(() { _loading = true; _error = null; });
+    final error = await widget.appState.fetchAlertHistory();
+    if (mounted) setState(() { _loading = false; _error = error; });
   }
 
   Future<void> _refresh() async {
-    await widget.appState.fetchAlertHistory();
+    final error = await widget.appState.fetchAlertHistory();
+    if (mounted) setState(() => _error = error);
   }
 
   @override
@@ -55,26 +57,45 @@ class _AlertPageState extends State<AlertPage> {
                 const SizedBox(height: 14),
                 Expanded(
                   child: _loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : RefreshIndicator(
-                          onRefresh: _refresh,
-                          child: alerts.isEmpty
-                              ? ListView(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  children: [
-                                    SizedBox(
-                                        height: 320, child: _emptyState()),
-                                  ],
-                                )
-                              : ListView.builder(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  itemCount: alerts.length,
-                                  itemBuilder: (context, index) =>
-                                      _alertCard(alerts[index]),
+                      ? const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text(
+                                'Loading alerts…\nServer may take a moment to wake up.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 13,
                                 ),
-                        ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _error != null
+                          ? _errorState(_error!)
+                          : RefreshIndicator(
+                              onRefresh: _refresh,
+                              child: alerts.isEmpty
+                                  ? ListView(
+                                      physics:
+                                          const AlwaysScrollableScrollPhysics(),
+                                      children: [
+                                        SizedBox(
+                                            height: 320,
+                                            child: _emptyState()),
+                                      ],
+                                    )
+                                  : ListView.builder(
+                                      physics:
+                                          const AlwaysScrollableScrollPhysics(),
+                                      itemCount: alerts.length,
+                                      itemBuilder: (context, index) =>
+                                          _alertCard(alerts[index]),
+                                    ),
+                            ),
                 ),
               ],
             ),
@@ -152,6 +173,41 @@ class _AlertPageState extends State<AlertPage> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // ── Error state ──────────────────────────────────────────────────────────
+  Widget _errorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.black26),
+            const SizedBox(height: 12),
+            const Text(
+              'Could not load alerts',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: _loadHistory,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Retry'),
+            ),
+          ],
         ),
       ),
     );

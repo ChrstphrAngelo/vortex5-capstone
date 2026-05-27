@@ -215,14 +215,16 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchAlertHistory() async {
+  Future<String?> fetchAlertHistory() async {
     try {
       final uri = Uri.parse(
-          '${UserSession.baseUrl}/api/alerts/history?days=30');
+          '${UserSession.baseUrl}/api/alerts/history?days=7');
       final response = await http
           .get(uri, headers: _authHeaders)
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200) return;
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) {
+        return 'Server error ${response.statusCode}';
+      }
       final list = jsonDecode(response.body) as List<dynamic>;
       _alertHistory = list
           .take(30)
@@ -234,7 +236,10 @@ class AppState extends ChangeNotifier {
           })
           .toList();
       notifyListeners();
-    } catch (_) {}
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   void markAlertHistoryRead(String key) {
