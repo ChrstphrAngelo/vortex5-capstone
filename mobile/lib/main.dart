@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:vortex5_application_2/models/user_session.dart';
-import 'package:vortex5_application_2/pages/login_page.dart';
-import 'package:vortex5_application_2/pages/main_shell.dart';
+import 'package:vortex5_application_2/pages/splash_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await UserSession.loadFromStorage();
   runApp(const MyApp());
 }
 
@@ -14,9 +11,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: UserSession.current == null ? const LoginPage() : const MainShell(),
+      home: SplashPage(),
     );
   }
 }

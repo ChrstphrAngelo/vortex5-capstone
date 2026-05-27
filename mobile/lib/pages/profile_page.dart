@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/user_session.dart';
 import 'login_page.dart';
 
@@ -10,9 +11,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool _emailNotifications = true;
-  bool _pushNotifications = true;
-  bool _privateAccount = false;
+  static const _blue = Color(0xFF1E5BFF);
 
   Future<void> _editProfile() async {
     final user = UserSession.current;
@@ -44,42 +43,24 @@ class _ProfilePageState extends State<ProfilePage> {
                   _field(pictureCtrl, 'Picture URL'),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: department.isEmpty ? null : department,
+                    value: department.isEmpty ? null : department,
                     decoration: _inputDecoration('Department'),
                     items: const [
-                      DropdownMenuItem(
-                        value: 'Science Department',
-                        child: Text('Science Department'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Mathematics Department',
-                        child: Text('Mathematics Department'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'English Department',
-                        child: Text('English Department'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'ICT Department',
-                        child: Text('ICT Department'),
-                      ),
+                      DropdownMenuItem(value: 'Science Department', child: Text('Science Department')),
+                      DropdownMenuItem(value: 'Mathematics Department', child: Text('Mathematics Department')),
+                      DropdownMenuItem(value: 'English Department', child: Text('English Department')),
+                      DropdownMenuItem(value: 'ICT Department', child: Text('ICT Department')),
                     ],
                     onChanged: (value) =>
                         setModalState(() => department = value ?? ''),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: staffType.isEmpty ? null : staffType,
+                    value: staffType.isEmpty ? null : staffType,
                     decoration: _inputDecoration('Staff Type'),
                     items: const [
-                      DropdownMenuItem(
-                        value: 'Teacher',
-                        child: Text('Teacher'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Student Teacher',
-                        child: Text('Student Teacher'),
-                      ),
+                      DropdownMenuItem(value: 'Teacher', child: Text('Teacher')),
+                      DropdownMenuItem(value: 'Student Teacher', child: Text('Student Teacher')),
                     ],
                     onChanged: (value) =>
                         setModalState(() => staffType = value ?? ''),
@@ -173,173 +154,154 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _signOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text('You will be returned to the login screen.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign out',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await UserSession.logout();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final u = UserSession.current;
-    final userName = u == null ? "User" : "${u.firstName} ${u.lastName}".trim();
-    final email = u?.email ?? "john.doe@school.edu";
-    final department = u?.department.isNotEmpty == true
-        ? u!.department
-        : "Science Department";
-    final staffType = u?.staffType.isNotEmpty == true
-        ? u!.staffType
-        : "Teacher";
+    final fullName =
+        u == null ? '' : '${u.firstName} ${u.lastName}'.trim();
+    final email = u?.email ?? '';
+    final staffType = u?.staffType ?? '';
+    final department = u?.department ?? '';
+    final role = u?.role ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E5BFF),
+        backgroundColor: _blue,
         elevation: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            Image.asset(
+              'assets/images/bewair_logo_white.png',
+              height: 28,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 10),
             Text(
-              'AirWatch',
-              style: TextStyle(
+              'Profile',
+              style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
+                fontSize: 22,
+                letterSpacing: 1.4,
               ),
-            ),
-            Text(
-              'Air Quality Monitor',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         children: [
+          // ── Gradient identity card ────────────────────────────────────
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF355CFF), Color(0xFFA020F0)],
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _avatar(u?.pictureUrl),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Text(
-                  userName,
+                  fullName.isEmpty ? 'No name set' : fullName,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 30,
+                    fontSize: 26,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                Text(email, style: const TextStyle(color: Colors.white70)),
-                const SizedBox(height: 8),
+                if (email.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(email,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 13)),
+                ],
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
+                  runSpacing: 6,
                   children: [
-                    Chip(label: Text(staffType)),
-                    Chip(label: Text(department)),
+                    if (role.isNotEmpty) _chip(role),
+                    if (staffType.isNotEmpty) _chip(staffType),
+                    if (department.isNotEmpty) _chip(department),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Text(
-                'Profile',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: _editProfile,
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('Edit'),
-              ),
-            ],
-          ),
-          _infoCard([
-            _infoRow('Name', userName),
-            _infoRow('Email', email),
-            _infoRow('Department', department),
-            _infoRow('Staff Type', staffType),
-            _infoRow('Teacher ID', u?.teacherId ?? '--'),
-          ]),
-          const SizedBox(height: 14),
+
+          const SizedBox(height: 20),
+
+          // ── Account Settings ──────────────────────────────────────────
           const Text(
             'Account Settings',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFD1D5DB)),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Column(
               children: [
-                SwitchListTile(
-                  title: const Text('Email Preferences'),
-                  subtitle: const Text('Receive summary updates by email'),
-                  value: _emailNotifications,
-                  onChanged: (value) =>
-                      setState(() => _emailNotifications = value),
+                _settingsTile(
+                  icon: Icons.person_outline_rounded,
+                  label: 'Edit Profile',
+                  subtitle: 'Update your name, email and picture',
+                  onTap: _editProfile,
                 ),
-                SwitchListTile(
-                  title: const Text('Notification Settings'),
-                  subtitle: const Text('Enable push alerts on this device'),
-                  value: _pushNotifications,
-                  onChanged: (value) =>
-                      setState(() => _pushNotifications = value),
-                ),
-                SwitchListTile(
-                  title: const Text('Privacy & Security'),
-                  subtitle: const Text(
-                    'Keep my account private to school staff',
-                  ),
-                  value: _privateAccount,
-                  onChanged: (value) => setState(() => _privateAccount = value),
-                ),
-                ListTile(
-                  title: const Text('Change Password'),
-                  trailing: const Icon(Icons.chevron_right),
+                const Divider(height: 1, indent: 56),
+                _settingsTile(
+                  icon: Icons.lock_outline_rounded,
+                  label: 'Change Password',
+                  subtitle: 'Update your login password',
                   onTap: _changePassword,
                 ),
+                const Divider(height: 1, indent: 56),
+                _settingsTile(
+                  icon: Icons.logout_rounded,
+                  label: 'Sign Out',
+                  subtitle: 'Log out of your account',
+                  onTap: _signOut,
+                  danger: true,
+                ),
               ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'Assigned Classrooms',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          _roomCard('Room 101'),
-          const SizedBox(height: 10),
-          _roomCard('Room 102'),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () async {
-              await UserSession.logout();
-              if (!context.mounted) return;
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-                (route) => false,
-              );
-            },
-            icon: const Icon(Icons.logout, color: Colors.red),
-            label: const Text(
-              'Sign Out',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFFF9A8A8)),
-              minimumSize: const Size.fromHeight(48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
             ),
           ),
         ],
@@ -347,108 +309,89 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // ── Helpers ─────────────────────────────────────────────────────────────
+
   Widget _avatar(String? pictureUrl) {
-    final initials = _avatarInitials();
+    final initials = _initials();
     if (pictureUrl != null && pictureUrl.trim().isNotEmpty) {
       return CircleAvatar(
         radius: 34,
         backgroundColor: const Color(0xFF6988FF),
         backgroundImage: NetworkImage(pictureUrl),
-        onBackgroundImageError: (exception, stackTrace) {},
+        onBackgroundImageError: (_, __) {},
         child: const SizedBox.shrink(),
       );
     }
-
     return CircleAvatar(
       radius: 34,
       backgroundColor: const Color(0xFF6988FF),
       child: Text(
         initials,
         style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-        ),
+            color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
       ),
     );
   }
 
-  Widget _roomCard(String room) {
+  Widget _chip(String label) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD1D5DB)),
+        color: Colors.white.withValues(alpha: 0.20),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white38),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE6EEFF),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.school_outlined, color: Color(0xFF1E5BFF)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  room,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Text(
-                  'Main Building',
-                  style: TextStyle(color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7F9EC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF86E3A8)),
-            ),
-            child: const Text(
-              'Online',
-              style: TextStyle(color: Color(0xFF0A9A40)),
-            ),
-          ),
-        ],
-      ),
+      child: Text(label,
+          style: const TextStyle(
+              color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 
-  Widget _infoCard(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD1D5DB)),
-      ),
-      child: Column(children: children),
-    );
-  }
-
-  Widget _infoRow(String label, String value) {
-    return ListTile(title: Text(label), subtitle: Text(value));
-  }
-
-  Widget _field(
-    TextEditingController controller,
-    String label, {
-    bool obscureText = false,
+  Widget _settingsTile({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool danger = false,
   }) {
+    final color = danger ? Colors.red : const Color(0xFF0F172A);
+    final subColor = danger ? Colors.red.shade300 : const Color(0xFF64748B);
+    return ListTile(
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: danger
+              ? Colors.red.withValues(alpha: 0.08)
+              : const Color(0xFFEFF6FF),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 18, color: danger ? Colors.red : _blue),
+      ),
+      title: Text(label,
+          style: TextStyle(
+              fontWeight: FontWeight.w600, fontSize: 14, color: color)),
+      subtitle: Text(subtitle,
+          style: TextStyle(fontSize: 12, color: subColor)),
+      trailing: Icon(Icons.chevron_right_rounded,
+          size: 18, color: const Color(0xFFCBD5E1)),
+      onTap: onTap,
+    );
+  }
+
+  String _initials() {
+    final u = UserSession.current;
+    if (u == null) return 'U';
+    final a = u.firstName.trim().isNotEmpty ? u.firstName.trim()[0] : '';
+    final b = u.lastName.trim().isNotEmpty ? u.lastName.trim()[0] : '';
+    final result = (a + b).toUpperCase();
+    return result.isEmpty ? 'U' : result;
+  }
+
+  TextField _field(TextEditingController ctrl, String label,
+      {bool obscureText = false}) {
     return TextField(
-      controller: controller,
+      controller: ctrl,
       obscureText: obscureText,
       decoration: _inputDecoration(label),
     );
@@ -459,16 +402,5 @@ class _ProfilePageState extends State<ProfilePage> {
       labelText: label,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     );
-  }
-
-  String _avatarInitials() {
-    final u = UserSession.current;
-    if (u == null) return 'U';
-    final f = u.firstName.trim();
-    final l = u.lastName.trim();
-    final a = f.isNotEmpty ? f[0] : '';
-    final b = l.isNotEmpty ? l[0] : '';
-    final initials = (a + b).toUpperCase();
-    return initials.isEmpty ? 'U' : initials;
   }
 }

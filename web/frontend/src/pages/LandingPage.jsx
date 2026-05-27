@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 
 // Import the logo and sensor image
-import bewAirLogo from '../assets/bewAirLogo.png'
+import bewAirLogo from '../assets/bewair_logo_black.png'
 import iotImage from '../assets/IoT.jpg'
 
 const LandingPage = () => {

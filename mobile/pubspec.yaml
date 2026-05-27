@@ -66,6 +66,8 @@ flutter:
 
   assets:
     - assets/images/bewair_logo.png
+    - assets/images/bewair_logo_black.png
+    - assets/images/bewair_logo_white.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

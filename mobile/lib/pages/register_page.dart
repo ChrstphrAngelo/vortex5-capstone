@@ -133,9 +133,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    const brandBlue = Color(0xFF1E88FF);
-    const brandGreen = Color(0xFF18A957);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4FAF6),
       appBar: AppBar(
@@ -143,7 +140,8 @@ class _RegisterPageState extends State<RegisterPage> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Color(0xFF1E5BFF)),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -171,18 +169,13 @@ class _RegisterPageState extends State<RegisterPage> {
                   children: [
                     Row(
                       children: [
-                        Container(
-                          width: 62,
-                          height: 62,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(18),
-                            gradient: const LinearGradient(
-                              colors: [brandBlue, brandGreen],
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.apartment_rounded,
-                            color: Colors.white,
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            'assets/images/bewair_logo_black.png',
+                            width: 62,
+                            height: 62,
+                            fit: BoxFit.contain,
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -283,7 +276,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           onPressed: _generateOtp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFE9F5FF),
-                            foregroundColor: brandBlue,
+                            foregroundColor: const Color(0xFF1E88FF),
                             elevation: 0,
                             minimumSize: const Size(110, 54),
                             shape: RoundedRectangleBorder(
@@ -344,7 +337,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       child: ElevatedButton(
                         onPressed: _loading ? null : _createAccount,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: brandBlue,
+                          backgroundColor: const Color(0xFF1E88FF),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(

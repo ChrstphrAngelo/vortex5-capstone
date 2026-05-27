@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { Maximize2, Minimize2, Pause, Play, CalendarDays, Newspaper, ChevronLeft, ChevronRight } from 'lucide-react'
-import bewAirLogo from '../assets/bewAirLogo.png'
+import bewAirLogo from '../assets/bewair_logo_black.png'
 
 const CATEGORY_COLORS = {
   'Good': '#16a34a',

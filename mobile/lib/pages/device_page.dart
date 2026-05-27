@@ -38,7 +38,7 @@ class _DevicePageState extends State<DevicePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'assets/images/bewair_logo.png',
+              'assets/images/bewair_logo_white.png',
               height: 28,
               fit: BoxFit.contain,
             ),

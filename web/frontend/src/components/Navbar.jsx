@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 
 // Import the logo
-import bewAirLogo from '../assets/bewAirLogo.png'
+import bewAirLogo from '../assets/bewair_logo_black.png'
 
 const Navbar = () => {
   const { user } = useAuthContext()
