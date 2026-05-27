@@ -12,31 +12,5 @@ class NotificationService {
     _notificationsEnabled = enabled;
   }
 
-  /// Returns static sample alerts. In production this can call backend/Firebase.
-  static List<AlertItem> getMockAlerts() {
-    final now = DateTime.now();
-    return [
-      AlertItem(
-        title: 'AQI Alert',
-        message: 'Room 101 PM2.5 has exceeded the preferred classroom range.',
-        type: AlertType.aqi,
-        createdAt: now,
-        isRead: false,
-      ),
-      AlertItem(
-        title: 'Air Quality Updated',
-        message: 'Air quality changed after the latest sensor sync.',
-        type: AlertType.advisory,
-        createdAt: now.subtract(const Duration(hours: 2)),
-        isRead: false,
-      ),
-      AlertItem(
-        title: 'Teacher Reminder',
-        message: 'Open classroom windows during break for better airflow.',
-        type: AlertType.reminder,
-        createdAt: now.subtract(const Duration(days: 1)),
-        isRead: true,
-      ),
-    ];
-  }
+  static List<AlertItem> getMockAlerts() => [];
 }

@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:vortex5_application_2/app_state.dart';
 import 'package:vortex5_application_2/models/sensor_device.dart';
 import 'package:vortex5_application_2/pages/device_list_page.dart';
 import 'package:vortex5_application_2/pages/share_device_page.dart';
-import '../models/user_session.dart';
 
 class HomePage extends StatefulWidget {
   final AppState appState;
@@ -214,16 +214,23 @@ class _HomePageState extends State<HomePage> {
     return AppBar(
       backgroundColor: blue,
       elevation: 0,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'BewAir',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+          Image.asset(
+            'assets/images/bewair_logo.png',
+            height: 28,
+            fit: BoxFit.contain,
           ),
+          const SizedBox(width: 10),
           Text(
-            _displayName(),
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            'BewAir',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              letterSpacing: 1.4,
+            ),
           ),
         ],
       ),
@@ -356,15 +363,7 @@ class _HomePageState extends State<HomePage> {
                 items: items
                     .map((r) => DropdownMenuItem(
                           value: r,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.meeting_room_outlined,
-                                  size: 18, color: Color(0xFF1E5BFF)),
-                              const SizedBox(width: 8),
-                              Text(r == 'all' ? 'All Rooms' : r),
-                            ],
-                          ),
+                          child: Text(r == 'all' ? 'All Rooms' : r),
                         ))
                     .toList(),
                 onChanged: _onRoomChanged,
@@ -500,12 +499,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  String _displayName() {
-    final u = UserSession.current;
-    if (u == null) return 'Teacher';
-    final name = '${u.firstName} ${u.lastName}'.trim();
-    return name.isEmpty ? 'Teacher' : name;
-  }
 }
 
 /// Self-contained detail card for a single sensor. Reads only from the passed
@@ -540,14 +533,6 @@ class _SensorPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
-          'Current Air Quality',
-          style: TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
         const SizedBox(height: 6),
 
         // Radial AQI gauge
@@ -582,7 +567,7 @@ class _SensorPanel extends StatelessWidget {
               ),
               // centered value
               Align(
-                alignment: const Alignment(0, 0.18),
+                alignment: const Alignment(0, 0.55),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -620,32 +605,56 @@ class _SensorPanel extends StatelessWidget {
               : (hasReading ? reading!.aqiLabel : 'No Data'),
           style: TextStyle(
             color: color,
-            fontSize: 26,
+            fontSize: 32,
             fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 14),
 
         // Sensor name + room (AirNow-style "location")
-        Text(
-          sensor.name.isEmpty ? sensor.id : sensor.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                sensor.name.isEmpty ? sensor.id : sensor.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _StatusBadge(status: sensor.status, enabled: sensor.enabled),
+          ],
+        ),
+        if (hasReading) ...[
+          const SizedBox(height: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.access_time_rounded,
+                  size: 12, color: Color(0xFF94A3B8)),
+              const SizedBox(width: 4),
+              Text(
+                'Updated ${_timeAgo(reading!.updatedAt)}',
+                style: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-        ),
-        Text(
-          sensor.room.isEmpty ? '—' : sensor.room,
-          style: const TextStyle(color: Color(0xFF64748B)),
-        ),
+        ],
         const SizedBox(height: 20),
 
         // Recommended actions for the current AQI (EPA AirNow guidance)
         if (hasReading) ...[
-          _recommendedActionsCard(aqi, color),
+          _RecommendedActionsCard(aqi: aqi, color: color),
           const SizedBox(height: 20),
         ],
 
@@ -666,71 +675,6 @@ class _SensorPanel extends StatelessWidget {
         ),
         _componentsCard(context, components, hasReading),
       ],
-    );
-  }
-
-  Widget _recommendedActionsCard(int aqi, Color color) {
-    final actions = _aqiActions(aqi);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.shield_outlined, size: 20, color: color),
-              const SizedBox(width: 8),
-              const Text(
-                'Recommended Actions',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ...actions.map(
-            (a) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6, right: 8),
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      a,
-                      style: const TextStyle(
-                        color: Color(0xFF334155),
-                        fontSize: 13.5,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const Text(
-            'Source: U.S. EPA AirNow',
-            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1035,6 +979,227 @@ _Insight _insightFor(String key, double v) {
     default:
       return const _Insight('—', Color(0xFF94A3B8), 'No insight available.');
   }
+}
+
+class _RecommendedActionsCard extends StatefulWidget {
+  final int aqi;
+  final Color color;
+
+  const _RecommendedActionsCard({required this.aqi, required this.color});
+
+  @override
+  State<_RecommendedActionsCard> createState() =>
+      _RecommendedActionsCardState();
+}
+
+class _RecommendedActionsCardState extends State<_RecommendedActionsCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = _aqiActions(widget.aqi);
+    final color = widget.color;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Icon(Icons.shield_outlined, size: 20, color: color),
+                const SizedBox(width: 8),
+                const Text(
+                  'Recommended Actions',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Collapsed: first action as a single preview line
+            if (!_expanded) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, right: 8),
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration:
+                          BoxDecoration(color: color, shape: BoxShape.circle),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      actions.first,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF334155),
+                        fontSize: 13.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () => setState(() => _expanded = true),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'See all actions',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(Icons.keyboard_arrow_down, size: 16, color: color),
+                  ],
+                ),
+              ),
+            ],
+
+            // Expanded: all actions + source + collapse link
+            if (_expanded) ...[
+              ...actions.map(
+                (a) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, right: 8),
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                              color: color, shape: BoxShape.circle),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          a,
+                          style: const TextStyle(
+                            color: Color(0xFF334155),
+                            fontSize: 13.5,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Text(
+                'Source: U.S. EPA AirNow',
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => setState(() => _expanded = false),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Show less',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(Icons.keyboard_arrow_up, size: 16, color: color),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final SensorStatus status;
+  final bool enabled;
+
+  const _StatusBadge({required this.status, required this.enabled});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color dotColor;
+    final String label;
+
+    if (!enabled) {
+      dotColor = const Color(0xFF94A3B8);
+      label = 'Off';
+    } else if (status == SensorStatus.offline) {
+      dotColor = const Color(0xFFEF4444);
+      label = 'Offline';
+    } else {
+      dotColor = const Color(0xFF22C55E);
+      label = 'Online';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: dotColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: dotColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _timeAgo(DateTime dt) {
+  final diff = DateTime.now().difference(dt);
+  if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  return '${diff.inDays}d ago';
 }
 
 /// Semicircular AQI gauge: equal-width category segments, a filled fan up to

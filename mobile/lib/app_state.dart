@@ -22,6 +22,9 @@ class AppState extends ChangeNotifier {
 
   final List<AlertItem> _alerts = [];
 
+  List<AlertItem> _alertHistory = [];
+  final Set<String> _readHistoryKeys = {};
+
   String _activeSensorId = '';
   int _aqi = 0;
   String _aqiLabel = '--';
@@ -39,12 +42,13 @@ class AppState extends ChangeNotifier {
   String get aqiLabel => _aqiLabel;
   DateTime get lastUpdated => _lastUpdated;
   List<AlertItem> get alerts => List.unmodifiable(_alerts);
+  List<AlertItem> get alertHistory => List.unmodifiable(_alertHistory);
   List<SensorDevice> get sensors => List.unmodifiable(_sensors);
   double get aqiThreshold => _aqiThreshold;
   double get pm25Threshold => _pm25Threshold;
   double get co2Threshold => _co2Threshold;
   bool get notificationsEnabled => _notificationsEnabled;
-  int get unreadAlertCount => _alerts.where((alert) => !alert.isRead).length;
+  int get unreadAlertCount => _alertHistory.where((a) => !a.isRead).length;
   bool get hasUnreadAlerts => unreadAlertCount > 0;
   bool get hasShownPopup => _hasShownPopup;
   bool get hasAnyDevice => _sensors.isNotEmpty;
@@ -209,6 +213,37 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       // Network/DNS error — silently keep last known state.
     }
+  }
+
+  Future<void> fetchAlertHistory() async {
+    try {
+      final uri = Uri.parse(
+          '${UserSession.baseUrl}/api/alerts/history?days=30');
+      final response = await http
+          .get(uri, headers: _authHeaders)
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return;
+      final list = jsonDecode(response.body) as List<dynamic>;
+      _alertHistory = list
+          .take(30)
+          .map((raw) =>
+              AlertItem.fromBackendHistory(raw as Map<String, dynamic>))
+          .map((a) {
+            a.isRead = _readHistoryKeys.contains(a.key);
+            return a;
+          })
+          .toList();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  void markAlertHistoryRead(String key) {
+    if (_readHistoryKeys.contains(key)) return;
+    _readHistoryKeys.add(key);
+    for (final a in _alertHistory) {
+      if (a.key == key) a.isRead = true;
+    }
+    notifyListeners();
   }
 
   Future<void> setThresholds({
