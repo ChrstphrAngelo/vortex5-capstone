@@ -2114,31 +2114,19 @@ input, select {
 
 /* AUTH PAGES / LOGIN SIGNUP */
 
-/* Full page content for auth pages (login/signup) */
+/* Let auth pages fill the full viewport — no extra centering or padding */
 .full-page-content {
   margin-left: 0 !important;
   width: 100%;
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
 }
 
-/* Center the auth forms when in full-page-content */
 .full-page-content .pages {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-/* Make sure login/signup forms are centered and don't have extra margins */
-.full-page-content .login,
-.full-page-content .signup {
-  margin: 0 auto;
-  width: 100%;
-  max-width: 400px;
+  max-width: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* Auth redirect links (Login/Signup) */
