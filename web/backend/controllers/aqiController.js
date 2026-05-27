@@ -328,4 +328,24 @@ const getAnalytics = async (req, res) => {
   }
 }
 
-module.exports = { getAqi, getLatestPerDevice, getAnalytics }
+// GET /api/aqi/device/:deviceId?limit=20  — recent readings for one device
+// Used by the device detail page for the "Recent Readings" diagnostic table.
+const getDeviceReadings = async (req, res) => {
+  try {
+    const { deviceId } = req.params
+    const userDeviceIds = await getVisibleDeviceIds(req.user)
+    if (!userDeviceIds.includes(deviceId)) {
+      return res.status(403).json({ error: 'Access denied' })
+    }
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100)
+    const readings = await AqiModel.find({ deviceId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean()
+    res.status(200).json(readings)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+module.exports = { getAqi, getLatestPerDevice, getAnalytics, getDeviceReadings }

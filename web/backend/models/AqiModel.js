@@ -15,4 +15,8 @@ const AqiSchema = new Schema({
     Humidity:     { type: Number, required: true }  // %RH
 }, { timestamps: true })
 
+// Compound index so getLatestPerDevice sorts only within each device,
+// not across the entire collection.
+AqiSchema.index({ deviceId: 1, createdAt: -1 })
+
 module.exports = mongoose.model('AQI', AqiSchema)

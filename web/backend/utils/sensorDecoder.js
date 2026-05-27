@@ -33,7 +33,7 @@ function decodeFrame(hexFrame) {
     console.log(`[sensor] numWords=${numWords} | ${allWords.join(' ')}`)
   }
 
-  return {
+  const raw = {
     // word(1..3) CF=1 standard PM — often reads 0 on real units
     PM1:          word(4),                  // atmospheric PM (real reading)
     PM25:         word(5),
@@ -45,6 +45,29 @@ function decodeFrame(hexFrame) {
     CO2:          word(16),                 // ppm
     Formaldehyde: word(17)                  // µg/m³
   }
+
+  // Sanity-check each field. Out-of-range values mean the word offsets are
+  // wrong or the sensor is not yet warmed up. Log a warning but still return
+  // the raw values so callers can decide what to do with them.
+  const RANGES = {
+    PM1:          [0, 1000],
+    PM25:         [0, 1000],
+    PM10:         [0, 1000],
+    TVOC:         [0, 60000],
+    Temperature:  [-20, 80],
+    Humidity:     [0, 100],
+    CO2:          [300, 65000],
+    Formaldehyde: [0, 5000],
+  }
+
+  for (const [field, [lo, hi]] of Object.entries(RANGES)) {
+    const v = raw[field]
+    if (v < lo || v > hi || !isFinite(v)) {
+      console.warn(`[sensor] ${field} out of expected range: ${v} (expected ${lo}–${hi}) — check word offsets`)
+    }
+  }
+
+  return raw
 }
 
 module.exports = { decodeFrame }
