@@ -815,40 +815,40 @@ form.signup, form.login {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
 }
 
 .auth-panel-logo {
-  width: 180px;
-  height: 180px;
+  width: 240px;
+  height: 240px;
   object-fit: contain;
   filter: brightness(0) invert(1);
   drop-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
 
 .auth-panel-name {
-  font-size: 56px;
+  font-size: 80px;
   font-weight: 800;
   color: #ffffff;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.05em;
   line-height: 1;
 }
 
 .auth-panel-tagline {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.65;
-  max-width: 280px;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.7;
+  max-width: 320px;
   margin-top: 4px;
 }
 
 /* Divider line under tagline */
 .auth-panel-divider {
-  width: 48px;
-  height: 3px;
+  width: 64px;
+  height: 4px;
   border-radius: 99px;
   background: linear-gradient(90deg, #38bdf8, #10b981);
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 /* ── Right form panel ───────────────────────────────────── */
@@ -858,29 +858,30 @@ form.signup, form.login {
   align-items: center;
   justify-content: center;
   background: #ffffff;
-  padding: 56px 52px;
+  padding: 64px 60px;
   overflow-y: auto;
 }
 
 .auth-form-wrap {
   width: 100%;
-  max-width: 380px;
+  max-width: 440px;
 }
 
 /* Headings */
 .auth-heading {
-  font-size: 32px;
+  font-size: 40px;
   font-weight: 800;
   color: #0f172a;
-  margin: 0 0 6px;
-  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
 }
 
 .auth-subheading {
-  font-size: 14px;
+  font-size: 15px;
   color: #64748b;
-  line-height: 1.6;
-  margin: 0 0 28px;
+  line-height: 1.65;
+  margin: 0 0 32px;
 }
 
 /* Divider between heading and form */
@@ -888,7 +889,7 @@ form.signup, form.login {
   width: 100%;
   height: 1px;
   background: #e2e8f0;
-  margin: 0 0 24px;
+  margin: 0 0 28px;
 }
 
 /* Form */
@@ -901,7 +902,7 @@ form.signup, form.login {
 /* Name row — two fields side by side */
 .auth-row {
   display: flex;
-  gap: 12px;
+  gap: 14px;
 }
 
 .auth-row .auth-field {
@@ -912,26 +913,26 @@ form.signup, form.login {
 .auth-field {
   display: flex;
   flex-direction: column;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
 }
 
 .auth-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 7px;
+  margin-bottom: 8px;
   letter-spacing: 0.01em;
 }
 
 .auth-input {
   width: 100%;
-  padding: 13px 16px;
-  font-size: 14px;
+  padding: 14px 16px;
+  font-size: 15px;
   font-family: var(--font-sans);
   color: #0f172a;
-  background: #f8fafc;
+  background: #f4f7fa;
   border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 14px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
   box-sizing: border-box;
@@ -949,7 +950,7 @@ form.signup, form.login {
 }
 
 .auth-pw-wrap .auth-input {
-  padding-right: 46px;
+  padding-right: 48px;
 }
 
 .auth-pw-toggle {
@@ -973,29 +974,30 @@ form.signup, form.login {
 
 /* Error message */
 .auth-error {
-  padding: 11px 14px;
-  margin-bottom: 16px;
-  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  border-radius: 12px;
   background: #fef2f2;
   color: #dc2626;
-  font-size: 13px;
+  font-size: 14px;
   border: 1px solid #fecaca;
 }
 
 /* Submit button */
 .auth-submit {
   width: 100%;
-  padding: 15px;
-  margin-top: 4px;
+  padding: 16px;
+  margin-top: 6px;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: #ffffff;
   font-size: 15px;
   font-weight: 700;
   font-family: var(--font-sans);
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
   transition: filter 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
@@ -1014,14 +1016,14 @@ form.signup, form.login {
 /* Switch link */
 .auth-switch {
   text-align: center;
-  margin: 20px 0 0;
-  font-size: 14px;
+  margin: 24px 0 0;
+  font-size: 15px;
   color: #64748b;
 }
 
 .auth-switch a {
   color: #2563eb;
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -1032,11 +1034,11 @@ form.signup, form.login {
 /* Back to landing page */
 .auth-back-link {
   text-align: center;
-  margin: 10px 0 0;
+  margin: 12px 0 0;
 }
 
 .auth-back-link a {
-  font-size: 12px;
+  font-size: 13px;
   color: #94a3b8;
   text-decoration: none;
 }
@@ -1057,9 +1059,9 @@ form.signup, form.login {
     flex: none;
   }
 
-  .auth-panel-logo { width: 100px; height: 100px; }
-  .auth-panel-name { font-size: 38px; }
-  .auth-panel-tagline { font-size: 14px; }
+  .auth-panel-logo { width: 120px; height: 120px; }
+  .auth-panel-name { font-size: 48px; }
+  .auth-panel-tagline { font-size: 15px; }
 
   .auth-panel-right {
     width: 100%;
