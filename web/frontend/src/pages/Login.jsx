@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { useLogin } from '../hooks/useLogin'
-import bewairLogo from '../assets/bewair_logo_black.png'
+import bewairLogoWhite from '../assets/bewair_logo_white.png'
 
 const Login = () => {
   const [email, setEmail]       = useState('')
@@ -17,71 +17,78 @@ const Login = () => {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
 
-        {/* ── Brand header ─────────────────────────────── */}
-        <div className="auth-brand">
-          <img src={bewairLogo} alt="BewAir logo" className="auth-logo-img" />
-          <div>
-            <div className="auth-brand-name">BewAir</div>
-          </div>
+      {/* ── Left branded panel ── */}
+      <div className="auth-panel-left">
+        <div className="auth-brand-panel">
+          <img src={bewairLogoWhite} alt="BewAir" className="auth-panel-logo" />
+          <div className="auth-panel-name">BewAir</div>
+          <p className="auth-panel-tagline">
+            Real-time air quality monitoring for healthier learning environments.
+          </p>
+          <div className="auth-panel-divider" />
         </div>
+      </div>
 
-        <h2 className="auth-heading">Welcome back</h2>
-        <p className="auth-subheading">
-          Log in to check classroom air quality, alerts, and device status.
-        </p>
+      {/* ── Right form panel ── */}
+      <div className="auth-panel-right">
+        <div className="auth-form-wrap">
+          <h2 className="auth-heading">Welcome back</h2>
+          <p className="auth-subheading">
+            Log in to check classroom air quality, alerts, and device status.
+          </p>
+          <div className="auth-form-divider" />
 
-        {/* ── Form ─────────────────────────────────────── */}
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="auth-field">
-            <label className="auth-label">Email</label>
-            <input
-              className="auth-input"
-              type="email"
-              placeholder="teacher@school.edu"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-
-          <div className="auth-field">
-            <label className="auth-label">Password</label>
-            <div className="auth-pw-wrap">
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="auth-field">
+              <label className="auth-label">Email</label>
               <input
                 className="auth-input"
-                type={showPw ? 'text' : 'password'}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="email"
+                placeholder="teacher@school.edu"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
-              <button
-                type="button"
-                className="auth-pw-toggle"
-                onClick={() => setShowPw(v => !v)}
-                tabIndex={-1}
-              >
-                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
             </div>
-          </div>
 
-          {error && <div className="auth-error">{error}</div>}
+            <div className="auth-field">
+              <label className="auth-label">Password</label>
+              <div className="auth-pw-wrap">
+                <input
+                  className="auth-input"
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="auth-pw-toggle"
+                  onClick={() => setShowPw(v => !v)}
+                  tabIndex={-1}
+                >
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
 
-          <button className="auth-submit" disabled={isLoading}>
-            {isLoading ? 'Logging in…' : 'Log in'}
-          </button>
-        </form>
+            {error && <div className="auth-error">{error}</div>}
 
-        {/* ── Footer links ─────────────────────────────── */}
-        <p className="auth-switch">
-          Don't have an account?{' '}
-          <Link to="/signup">Create account</Link>
-        </p>
-        <p className="auth-back-link">
-          <Link to="/landingpage">← Back to Landing Page</Link>
-        </p>
+            <button className="auth-submit" disabled={isLoading}>
+              {isLoading ? 'Logging in…' : 'Log in'}
+            </button>
+          </form>
+
+          <p className="auth-switch">
+            Don't have an account?{' '}
+            <Link to="/signup">Create account</Link>
+          </p>
+          <p className="auth-back-link">
+            <Link to="/landingpage">← Back to Landing Page</Link>
+          </p>
+        </div>
       </div>
+
     </div>
   )
 }
