@@ -218,7 +218,7 @@ class AppState extends ChangeNotifier {
   Future<String?> fetchAlertHistory() async {
     try {
       final uri = Uri.parse(
-          '${UserSession.baseUrl}/api/alerts/history?days=7');
+          '${UserSession.baseUrl}/api/alerts/history?days=1');
       final response = await http
           .get(uri, headers: _authHeaders)
           .timeout(const Duration(seconds: 30));

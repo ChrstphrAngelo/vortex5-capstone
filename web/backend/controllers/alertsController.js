@@ -55,19 +55,19 @@ const getAlertHistory = async (req, res) => {
     const userDeviceIds = await getVisibleDeviceIds(req.user)
     if (userDeviceIds.length === 0) return res.status(200).json([])
 
-    const days = Math.min(parseInt(req.query.days || '7', 10), 30)
+    const days = Math.min(parseInt(req.query.days || '1', 10), 3)
     const since = new Date(Date.now() - days * 86400 * 1000)
 
     const thresholdDoc = await ThresholdModel.findOne().sort({ createdAt: -1 }).lean()
     const limits = buildLimits(thresholdDoc)
 
-    // Use $expr to compare field-by-field with the dynamic limits.
-    // We fetch all readings in the window then filter in JS for clarity (limits
-    // are small numbers, dataset is bounded by 7 days at ~1 reading/2s per device).
+    // Hard limit of 2000 readings to prevent OOM on constrained hosting.
+    // At ~1 reading/2s per device this covers ~1 hour per device, enough
+    // to detect threshold-crossing transitions without loading the full dataset.
     const readings = await AqiModel.find({
       deviceId: { $in: userDeviceIds },
       createdAt: { $gte: since }
-    }).sort({ createdAt: -1 }).lean()
+    }).sort({ createdAt: -1 }).limit(2000).lean()
 
     const devices = await Device.find({ deviceId: { $in: userDeviceIds } }).lean()
     const deviceMap = Object.fromEntries(devices.map(d => [d.deviceId, d]))
