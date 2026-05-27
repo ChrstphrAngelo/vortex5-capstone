@@ -24,7 +24,6 @@ const Login = () => {
           <img src={bewairLogo} alt="BewAir logo" className="auth-logo-img" />
           <div>
             <div className="auth-brand-name">BewAir</div>
-            <div className="auth-brand-sub">School Air Quality Monitor</div>
           </div>
         </div>
 
