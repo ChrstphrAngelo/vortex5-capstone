@@ -15,7 +15,7 @@ const Header = () => {
     <div className="header">
       <div className="header-left">
         <h1>Air Quality Monitoring System</h1>
-        <p>Real-time environmental monitoring for your school</p>
+        <p>Real-time environmental monitoring</p>
       </div>
 
       <div className="header-right">

@@ -60,7 +60,6 @@ const Navbar = () => {
           <img src={bewAirLogo} alt="BewAir Logo" className="sidebar-logo" />
           <h2>BewAir</h2>
         </div>
-        <span>School Air Monitor</span>
       </div>
 
       <nav className="sidebar-links">

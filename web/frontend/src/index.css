@@ -216,28 +216,26 @@ a:hover {
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .sidebar-logo {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
 .sidebar-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--color-text-primary);
 }
 
+/* removed subtitle span — kept selector as no-op in case of cache */
 .sidebar-header span {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-tertiary);
-  margin-top: 4px;
+  display: none;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
