@@ -787,23 +787,25 @@ form.signup, form.login {
 /* Brand row: logo + name + tagline */
 .auth-brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   margin-bottom: 32px;
 }
 
 .auth-logo-img {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   object-fit: contain;
-  border-radius: 16px;
+  border-radius: 20px;
 }
 
 .auth-brand-name {
-  font-size: 36px;
+  font-size: 42px;
   font-weight: 800;
   color: var(--color-text-primary);
   line-height: 1.1;
+  text-align: center;
 }
 
 .auth-brand-sub {
