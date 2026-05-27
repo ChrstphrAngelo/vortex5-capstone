@@ -210,7 +210,6 @@ const DeviceDetail = () => {
           PM1: null, PM25: null, PM10: null,
           TVOC: null, CO2: null, Formaldehyde: null,
         }}
-        history={history}
       />
 
       {isOnline && <RecommendedActions reading={displayReading} />}
