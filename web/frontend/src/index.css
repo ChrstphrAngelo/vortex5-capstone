@@ -853,8 +853,7 @@ form.signup, form.login {
 
 /* ── Right form panel ───────────────────────────────────── */
 .auth-panel-right {
-  width: 500px;
-  flex-shrink: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
