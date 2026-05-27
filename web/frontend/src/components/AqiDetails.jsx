@@ -5,24 +5,13 @@ const fmt = (v, d = 1) => {
   return typeof v === 'number' && !Number.isInteger(v) ? v.toFixed(d) : String(v)
 }
 
-// Visual max per metric — used only to scale the fill bar
-const BAR_MAX = {
-  pm1: 150, pm25: 150, pm10: 350,
-  co2: 2500, tvoc: 3000, hcho: 500,
-  temp: 45,  humidity: 100,
-}
-
 const MetricTile = ({ label, value, unit, insightKey }) => {
-  const insight  = componentInsight(insightKey, value)
-  const color    = insight?.color || '#94a3b8'
-  const level    = insight?.level || null
-  const fillPct  = value != null
-    ? Math.min((value / (BAR_MAX[insightKey] || 500)) * 100, 100)
-    : 0
+  const insight = componentInsight(insightKey, value)
+  const color   = insight?.color || '#94a3b8'
+  const level   = insight?.level || null
 
   return (
     <div className="aqt-tile" style={{ '--aqt-color': color }}>
-      {/* top row: label + status badge */}
       <div className="aqt-top">
         <span className="aqt-label">{label}</span>
         {level && (
@@ -32,15 +21,9 @@ const MetricTile = ({ label, value, unit, insightKey }) => {
         )}
       </div>
 
-      {/* value */}
       <div className="aqt-value">
         {fmt(value)}
         {value != null && <span className="aqt-unit"> {unit}</span>}
-      </div>
-
-      {/* thin fill bar */}
-      <div className="aqt-bar-track">
-        <div className="aqt-bar-fill" style={{ width: `${fillPct}%`, background: color }} />
       </div>
     </div>
   )

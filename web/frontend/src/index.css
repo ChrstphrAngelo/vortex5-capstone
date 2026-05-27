@@ -1387,9 +1387,9 @@ input, select {
 }
 
 .aqt-badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1406,20 +1406,6 @@ input, select {
   font-size: 0.72rem;
   font-weight: 500;
   color: var(--color-text-tertiary);
-}
-
-/* Fill bar */
-.aqt-bar-track {
-  height: 3px;
-  background: var(--color-border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.aqt-bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.5s ease;
 }
 
 /* Responsive */
