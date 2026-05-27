@@ -1358,35 +1358,68 @@ input, select {
   gap: 10px;
 }
 
-.aqi-simple-tile {
+/* Metric tile */
+.aqt-tile {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-left: 3px solid #e2e8f0;
+  border-left: 3px solid var(--aqt-color, #e2e8f0);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 14px 16px 12px;
   box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.aqi-simple-tile-label {
+.aqt-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.aqt-label {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--color-text-tertiary);
-  margin-bottom: 6px;
 }
 
-.aqi-simple-tile-value {
+.aqt-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.aqt-value {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-text-primary);
-  line-height: 1;
+  line-height: 1.1;
 }
 
-.aqi-simple-tile-unit {
-  font-size: 0.75rem;
+.aqt-unit {
+  font-size: 0.72rem;
   font-weight: 500;
   color: var(--color-text-tertiary);
+}
+
+/* Fill bar */
+.aqt-bar-track {
+  height: 3px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.aqt-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
 }
 
 /* Responsive */

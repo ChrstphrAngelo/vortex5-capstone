@@ -5,8 +5,49 @@ const fmt = (v, d = 1) => {
   return typeof v === 'number' && !Number.isInteger(v) ? v.toFixed(d) : String(v)
 }
 
+// Visual max per metric — used only to scale the fill bar
+const BAR_MAX = {
+  pm1: 150, pm25: 150, pm10: 350,
+  co2: 2500, tvoc: 3000, hcho: 500,
+  temp: 45,  humidity: 100,
+}
+
+const MetricTile = ({ label, value, unit, insightKey }) => {
+  const insight  = componentInsight(insightKey, value)
+  const color    = insight?.color || '#94a3b8'
+  const level    = insight?.level || null
+  const fillPct  = value != null
+    ? Math.min((value / (BAR_MAX[insightKey] || 500)) * 100, 100)
+    : 0
+
+  return (
+    <div className="aqt-tile" style={{ '--aqt-color': color }}>
+      {/* top row: label + status badge */}
+      <div className="aqt-top">
+        <span className="aqt-label">{label}</span>
+        {level && (
+          <span className="aqt-badge" style={{ background: color + '20', color }}>
+            {level}
+          </span>
+        )}
+      </div>
+
+      {/* value */}
+      <div className="aqt-value">
+        {fmt(value)}
+        {value != null && <span className="aqt-unit"> {unit}</span>}
+      </div>
+
+      {/* thin fill bar */}
+      <div className="aqt-bar-track">
+        <div className="aqt-bar-fill" style={{ width: `${fillPct}%`, background: color }} />
+      </div>
+    </div>
+  )
+}
+
 const AqiDetails = ({ aqi }) => {
-  const aqiVal  = aqi?.Aqi
+  const aqiVal   = aqi?.Aqi
   const category = aqiCategory(aqiVal)
   const catColor = CATEGORY_COLORS[category] || '#94a3b8'
 
@@ -24,7 +65,7 @@ const AqiDetails = ({ aqi }) => {
   return (
     <div className="aqi-simple-root">
 
-      {/* AQI summary row */}
+      {/* AQI summary */}
       <div className="aqi-summary-card">
         <div className="aqi-summary-left">
           <div className="aqi-summary-number" style={{ color: catColor }}>
@@ -58,19 +99,9 @@ const AqiDetails = ({ aqi }) => {
 
       {/* Metrics grid */}
       <div className="aqi-simple-grid">
-        {metrics.map(({ label, value, unit, key }) => {
-          const insight = componentInsight(key, value)
-          const color = insight?.color || '#e2e8f0'
-          return (
-            <div key={key} className="aqi-simple-tile" style={{ borderLeftColor: color }}>
-              <div className="aqi-simple-tile-label">{label}</div>
-              <div className="aqi-simple-tile-value">
-                {fmt(value)}
-                {value != null && <span className="aqi-simple-tile-unit"> {unit}</span>}
-              </div>
-            </div>
-          )
-        })}
+        {metrics.map(({ label, value, unit, key }) => (
+          <MetricTile key={key} label={label} value={value} unit={unit} insightKey={key} />
+        ))}
       </div>
 
     </div>
