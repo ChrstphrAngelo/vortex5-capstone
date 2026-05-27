@@ -17,9 +17,9 @@ class BulletinPost {
 
   factory BulletinPost.fromJson(Map<String, dynamic> json) {
     return BulletinPost(
-      id: json['id']?.toString() ?? '',
+      id: (json['_id'] ?? json['id'])?.toString() ?? '',
       title: json['title']?.toString() ?? '',
-      message: json['message']?.toString() ?? '',
+      message: (json['description'] ?? json['message'])?.toString() ?? '',
       category: json['category']?.toString() ?? 'General',
       pinned: json['pinned'] == true,
       createdAt:
@@ -27,13 +27,4 @@ class BulletinPost {
           DateTime.now(),
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'message': message,
-    'category': category,
-    'pinned': pinned,
-    'createdAt': createdAt.toIso8601String(),
-  };
 }

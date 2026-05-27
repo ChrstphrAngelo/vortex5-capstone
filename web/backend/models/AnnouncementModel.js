@@ -16,6 +16,14 @@ const AnnouncementSchema = new Schema({
   },
   time: {
     type: String
+  },
+  category: {
+    type: String,
+    default: 'General'
+  },
+  pinned: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true })
 

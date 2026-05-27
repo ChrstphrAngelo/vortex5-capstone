@@ -51,7 +51,7 @@ class _MainShellState extends State<MainShell> {
       ),
       AlertPage(appState: _appState),
       DevicePage(appState: _appState),
-      const BulletinBoardPage(),
+      BulletinBoardPage(appState: _appState),
       const ProfilePage(),
     ];
 

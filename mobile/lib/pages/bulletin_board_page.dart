@@ -1,16 +1,22 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:vortex5_application_2/app_state.dart';
 import 'package:vortex5_application_2/models/bulletin_post.dart';
-import 'package:vortex5_application_2/services/local_storage_service.dart';
+import 'package:vortex5_application_2/models/user_session.dart';
 
 class BulletinBoardPage extends StatefulWidget {
-  const BulletinBoardPage({super.key});
+  const BulletinBoardPage({super.key, required this.appState});
+
+  final AppState appState;
 
   @override
   State<BulletinBoardPage> createState() => _BulletinBoardPageState();
 }
 
 class _BulletinBoardPageState extends State<BulletinBoardPage> {
-  static const _storageKey = 'bulletin_posts';
+  static const _blue = Color(0xFF1E5BFF);
   static const _categories = [
     'All',
     'Events',
@@ -19,36 +25,49 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
     'Reminders',
   ];
 
-  List<BulletinPost> _posts = const [];
+  List<BulletinPost> _posts = [];
   String _selectedCategory = 'All';
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadPosts();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPosts());
+  }
+
+  Map<String, String> _headers() {
+    final token = UserSession.current?.token ?? '';
+    return {
+      'Content-Type': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
   }
 
   Future<void> _loadPosts() async {
-    final saved = await LocalStorageService.loadJsonList(_storageKey);
-    if (saved.isEmpty) {
-      _posts = _defaultPosts;
-      await _persistPosts();
-    } else {
-      _posts = saved.map(BulletinPost.fromJson).toList();
+    setState(() { _loading = true; _error = null; });
+    try {
+      final uri = Uri.parse('${UserSession.baseUrl}/api/announcements');
+      final res = await http.get(uri, headers: _headers()).timeout(const Duration(seconds: 30));
+      if (res.statusCode != 200) throw Exception('Server error ${res.statusCode}');
+      final list = jsonDecode(res.body) as List<dynamic>;
+      _posts = list
+          .map((e) => BulletinPost.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      _error = e.toString();
     }
-    if (mounted) setState(() {});
+    if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _persistPosts() async {
-    await LocalStorageService.saveJsonList(
-      _storageKey,
-      _posts.map((post) => post.toJson()).toList(),
-    );
-  }
-
-  List<BulletinPost> get _filteredPosts {
-    if (_selectedCategory == 'All') return _posts;
-    return _posts.where((post) => post.category == _selectedCategory).toList();
+  Future<void> _deletePost(String id) async {
+    try {
+      final uri = Uri.parse('${UserSession.baseUrl}/api/announcements/$id');
+      final res = await http.delete(uri, headers: _headers()).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        setState(() => _posts.removeWhere((p) => p.id == id));
+      }
+    } catch (_) {}
   }
 
   Future<void> _createPost() async {
@@ -91,11 +110,8 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
                       border: OutlineInputBorder(),
                     ),
                     items: _categories
-                        .where((item) => item != 'All')
-                        .map(
-                          (item) =>
-                              DropdownMenuItem(value: item, child: Text(item)),
-                        )
+                        .where((c) => c != 'All')
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (value) =>
                         setModalState(() => category = value ?? 'Events'),
@@ -118,34 +134,53 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final navigator = Navigator.of(dialogContext);
                   if (titleCtrl.text.trim().isEmpty ||
                       messageCtrl.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Title and message are required.'),
-                      ),
+                          content: Text('Title and message are required.')),
                     );
                     return;
                   }
-
-                  _posts = [
-                    BulletinPost(
-                      id: DateTime.now().microsecondsSinceEpoch.toString(),
-                      title: titleCtrl.text.trim(),
-                      message: messageCtrl.text.trim(),
-                      category: category,
-                      pinned: pinned,
-                      createdAt: DateTime.now(),
-                    ),
-                    ..._posts,
-                  ];
-                  await _persistPosts();
-                  if (!mounted) return;
-                  navigator.pop();
-                  setState(() {});
-                  messenger.showSnackBar(const SnackBar(content: Text('Announcement saved.')));
+                  final messenger = ScaffoldMessenger.of(context);
+                  final navigator = Navigator.of(dialogContext);
+                  try {
+                    final now = DateTime.now();
+                    final uri = Uri.parse(
+                        '${UserSession.baseUrl}/api/announcements');
+                    final res = await http.post(
+                      uri,
+                      headers: _headers(),
+                      body: jsonEncode({
+                        'title': titleCtrl.text.trim(),
+                        'description': messageCtrl.text.trim(),
+                        'category': category,
+                        'pinned': pinned,
+                        'date':
+                            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
+                        'time':
+                            '${now.hour}:${now.minute.toString().padLeft(2, '0')}',
+                      }),
+                    );
+                    if (!mounted) return;
+                    navigator.pop();
+                    if (res.statusCode == 200) {
+                      final created = BulletinPost.fromJson(
+                          jsonDecode(res.body) as Map<String, dynamic>);
+                      setState(() => _posts.insert(0, created));
+                      messenger.showSnackBar(
+                          const SnackBar(content: Text('Announcement saved.')));
+                    } else {
+                      messenger.showSnackBar(
+                          SnackBar(content: Text('Failed: ${res.statusCode}')));
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Navigator.of(dialogContext).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e')));
+                    }
+                  }
                 },
                 child: const Text('Post'),
               ),
@@ -156,86 +191,122 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
     );
   }
 
+  List<BulletinPost> get _filteredPosts {
+    if (_selectedCategory == 'All') return _posts;
+    return _posts.where((p) => p.category == _selectedCategory).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pinnedPosts = _filteredPosts.where((post) => post.pinned).toList();
-    final regularPosts = _filteredPosts.where((post) => !post.pinned).toList();
+    final isAdmin = widget.appState.isAdmin;
+    final filtered = _filteredPosts;
+    final pinnedPosts = filtered.where((p) => p.pinned).toList();
+    final regularPosts = filtered.where((p) => !p.pinned).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E5BFF),
+        backgroundColor: _blue,
         elevation: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            Image.asset(
+              'assets/images/bewair_logo.png',
+              height: 28,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 10),
             Text(
-              'AirWatch',
-              style: TextStyle(
+              'Bulletin',
+              style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
+                fontSize: 22,
+                letterSpacing: 1.4,
               ),
-            ),
-            Text(
-              'Air Quality Monitor',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: _createPost,
-            icon: const Icon(Icons.add_comment_outlined, color: Colors.white),
-          ),
+          if (isAdmin)
+            IconButton(
+              onPressed: _createPost,
+              icon: const Icon(Icons.add_comment_outlined, color: Colors.white),
+            ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          const Text(
-            'Bulletin Board',
-            style: TextStyle(fontSize: 34, fontWeight: FontWeight.w700),
-          ),
-          const Text(
-            'School-wide announcements and updates',
-            style: TextStyle(color: Colors.black54),
-          ),
-          const SizedBox(height: 12),
-          const _HeroCard(),
-          const SizedBox(height: 14),
-          _CategoryCard(
-            selected: _selectedCategory,
-            onSelected: (value) => setState(() => _selectedCategory = value),
-          ),
-          const SizedBox(height: 14),
-          if (pinnedPosts.isNotEmpty) ...[
-            const Text(
-              'Pinned Announcements',
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 10),
-            ...pinnedPosts.map(_announcementCard),
-            const SizedBox(height: 14),
-          ],
-          const Text(
-            'School Updates',
-            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          if (regularPosts.isEmpty)
-            const Text(
-              'No announcements in this category yet.',
-              style: TextStyle(color: Colors.black54),
-            ),
-          ...regularPosts.map(_announcementCard),
-          const SizedBox(height: 12),
-          const _StayUpdatedCard(),
-        ],
-      ),
+      body: _loading
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading announcements…\nServer may take a moment to wake up.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                  ),
+                ],
+              ),
+            )
+          : _error != null
+              ? _errorState(_error!)
+              : RefreshIndicator(
+                  onRefresh: _loadPosts,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(12),
+                    children: [
+                      _CategoryCard(
+                        selected: _selectedCategory,
+                        onSelected: (value) =>
+                            setState(() => _selectedCategory = value),
+                      ),
+                      const SizedBox(height: 14),
+                      if (pinnedPosts.isNotEmpty) ...[
+                        const Text(
+                          'Pinned Announcements',
+                          style: TextStyle(
+                              fontSize: 19, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 10),
+                        ...pinnedPosts.map((p) => _announcementCard(p, isAdmin)),
+                        const SizedBox(height: 14),
+                      ],
+                      const Text(
+                        'Announcements',
+                        style: TextStyle(
+                            fontSize: 19, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 10),
+                      if (regularPosts.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.campaign_outlined,
+                                    size: 48, color: Colors.black26),
+                                SizedBox(height: 12),
+                                Text(
+                                  'No announcements yet.',
+                                  style: TextStyle(color: Colors.black45),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ...regularPosts.map((p) => _announcementCard(p, isAdmin)),
+                    ],
+                  ),
+                ),
     );
   }
 
-  Widget _announcementCard(BulletinPost post) {
+  Widget _announcementCard(BulletinPost post, bool isAdmin) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -247,30 +318,107 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8DDFB),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(post.category, style: const TextStyle(fontSize: 12)),
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8DDFB),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(post.category,
+                    style: const TextStyle(fontSize: 12)),
+              ),
+              if (post.pinned) ...[
+                const SizedBox(width: 6),
+                const Icon(Icons.push_pin_rounded,
+                    size: 14, color: Color(0xFF1E5BFF)),
+              ],
+              const Spacer(),
+              if (isAdmin)
+                GestureDetector(
+                  onTap: () => _confirmDelete(post),
+                  child: const Icon(Icons.delete_outline_rounded,
+                      size: 18, color: Color(0xFFCBD5E1)),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
             post.title,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
-          Text(post.message),
+          Text(post.message,
+              style: const TextStyle(color: Color(0xFF475569), height: 1.4)),
           const SizedBox(height: 10),
           Text(
             _timeAgo(post.createdAt),
             style: const TextStyle(
-              color: Color(0xFF1E5BFF),
+              color: _blue,
               fontWeight: FontWeight.w700,
+              fontSize: 12,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BulletinPost post) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete announcement?'),
+        content: Text('"${post.title}" will be permanently removed.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deletePost(post.id);
+            },
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded,
+                size: 48, color: Colors.black26),
+            const SizedBox(height: 12),
+            const Text(
+              'Could not load announcements',
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: _loadPosts,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -281,31 +429,6 @@ class _BulletinBoardPageState extends State<BulletinBoardPage> {
     if (diff.inHours < 1) return '${diff.inMinutes} min ago';
     if (diff.inDays < 1) return '${diff.inHours} hr ago';
     return '${diff.inDays} day ago';
-  }
-}
-
-class _HeroCard extends StatelessWidget {
-  const _HeroCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF355CFF), Color(0xFFA020F0)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Text(
-        'Welcome to AirWatch!\nStay informed about air quality in your classrooms. Check here regularly for important updates and environmental tips.',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
   }
 }
 
@@ -348,62 +471,3 @@ class _CategoryCard extends StatelessWidget {
     );
   }
 }
-
-class _StayUpdatedCard extends StatelessWidget {
-  const _StayUpdatedCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF5FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFB5D0FF)),
-      ),
-      child: const Text(
-        'Stay Updated\nEnable notifications to receive important announcements instantly.',
-      ),
-    );
-  }
-}
-
-final _defaultPosts = [
-  BulletinPost(
-    id: 'post1',
-    title: 'Air Quality Awareness Week',
-    message:
-        'Join us for Air Quality Awareness Week! Learn the importance of clean air.',
-    category: 'Events',
-    pinned: true,
-    createdAt: DateTime(2026, 3, 20),
-  ),
-  BulletinPost(
-    id: 'post2',
-    title: 'New Air Quality Thresholds',
-    message:
-        'We have updated our air quality monitoring thresholds to align with the latest school guidelines.',
-    category: 'System Updates',
-    pinned: true,
-    createdAt: DateTime(2026, 3, 19),
-  ),
-  BulletinPost(
-    id: 'post3',
-    title: 'Reminder: Window Ventilation Protocol',
-    message:
-        'Please open classroom windows during breaks and between classes whenever possible.',
-    category: 'Reminders',
-    pinned: false,
-    createdAt: DateTime(2026, 3, 18),
-  ),
-  BulletinPost(
-    id: 'post4',
-    title: 'Environmental Club Recognition',
-    message:
-        'Congratulations to the Environmental Club for their clean air campaign success.',
-    category: 'Achievements',
-    pinned: false,
-    createdAt: DateTime(2026, 3, 17),
-  ),
-];

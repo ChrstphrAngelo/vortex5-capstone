@@ -8,14 +8,16 @@ const getAnnouncements = async (req, res) => {
 
 // create
 const inputAnnouncement = async (req, res) => {
-  const { title, description, date, time } = req.body
+  const { title, description, date, time, category, pinned } = req.body
 
   try {
     const announcement = await Announcement.create({
       title,
       description,
       date,
-      time
+      time,
+      category: category || 'General',
+      pinned: pinned === true,
     })
 
     res.status(200).json(announcement)
