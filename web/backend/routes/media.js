@@ -1,5 +1,6 @@
 const express = require('express')
 const router = express.Router()
+const { requireAuth, requireAdmin } = require('../middleware/requireAuth')
 
 const {
   getMedia,
@@ -20,8 +21,8 @@ const uploadVideo = (req, res, next) => {
   })
 }
 
-router.get('/', getMedia)
-router.post('/', uploadVideo, createMedia)
-router.delete('/:id', deleteMedia)
+router.get('/',       requireAuth, getMedia)
+router.post('/',      requireAuth, requireAdmin, uploadVideo, createMedia)
+router.delete('/:id', requireAuth, requireAdmin, deleteMedia)
 
 module.exports = router

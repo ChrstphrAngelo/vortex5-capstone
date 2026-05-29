@@ -15,7 +15,8 @@ const createMedia = async (req, res) => {
     console.log('FILE:', req.file)
     console.log('BODY:', req.body)
 
-    const { title, performedBy } = req.body
+    const { title } = req.body
+    const actor = req.user?.email || 'Unknown'
 
     if (!req.file) {
       return res.status(400).json({ error: 'No video file uploaded' })
@@ -28,8 +29,8 @@ const createMedia = async (req, res) => {
     // Add audit log for upload
     await logAudit({
       module: 'Bulletin Board',
-      action: `Video "${title || 'Untitled'}" was uploaded by ${performedBy || 'Unknown'}`,
-      user: performedBy || 'Unknown'
+      action: `Video "${title || 'Untitled'}" was uploaded`,
+      user: actor
     })
 
     res.status(200).json(media)
@@ -42,12 +43,12 @@ const createMedia = async (req, res) => {
 /* DELETE MEDIA */
 const deleteMedia = async (req, res) => {
   const { id } = req.params
-  const { performedBy, videoTitle } = req.body
+  const actor = req.user?.email || 'Unknown'
 
   try {
     // Get the media before deleting to know the filename
     const media = await Media.findById(id)
-    
+
     if (!media) {
       return res.status(404).json({ error: 'Media not found' })
     }
@@ -65,8 +66,8 @@ const deleteMedia = async (req, res) => {
     // Add audit log for delete
     await logAudit({
       module: 'Bulletin Board',
-      action: `Video "${videoTitle || media.title || 'Untitled'}" was deleted by ${performedBy || 'Unknown'}`,
-      user: performedBy || 'Unknown'
+      action: `Video "${media.title || 'Untitled'}" was deleted`,
+      user: actor
     })
 
     res.status(200).json(media)

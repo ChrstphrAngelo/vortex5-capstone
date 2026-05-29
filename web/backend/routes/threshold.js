@@ -1,4 +1,5 @@
 const express = require('express')
+const { requireAuth, requireAdmin } = require('../middleware/requireAuth')
 const {
   getThresholds,
   createThreshold,
@@ -11,14 +12,14 @@ const {
 
 const router = express.Router()
 
-router.get('/', getThresholds)
-router.post('/', createThreshold)
-router.delete('/:id', deleteThreshold)
-router.put('/:id', updateThreshold)
+router.get('/',    requireAuth, getThresholds)
+router.post('/',   requireAuth, requireAdmin, createThreshold)
+router.delete('/:id', requireAuth, requireAdmin, deleteThreshold)
+router.put('/:id', requireAuth, requireAdmin, updateThreshold)
 
 /* ADVISORY ROUTES */
-router.post('/:id/advisory', addAdvisory)
-router.put('/:id/advisory/:index', updateAdvisory)
-router.delete('/:id/advisory/:index', deleteAdvisory)
+router.post('/:id/advisory',             requireAuth, requireAdmin, addAdvisory)
+router.put('/:id/advisory/:index',       requireAuth, requireAdmin, updateAdvisory)
+router.delete('/:id/advisory/:index',    requireAuth, requireAdmin, deleteAdvisory)
 
 module.exports = router

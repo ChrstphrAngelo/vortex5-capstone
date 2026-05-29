@@ -105,12 +105,11 @@ const getUsers = async (req, res) => {
 
 const deactivateUser = async (req, res) => {
     const { id } = req.params
-    const { performedBy } = req.body
 
     try {
         const user = await User.findByIdAndUpdate(
             id,
-            { 
+            {
                 status: 'deactivated',
                 deactivatedAt: new Date()
             },
@@ -123,8 +122,8 @@ const deactivateUser = async (req, res) => {
 
         await logAudit({
             module: 'User',
-            action: `User ${user.firstName} ${user.lastName} (${user.email}) was deactivated by ${performedBy || 'Unknown'}`,
-            user: performedBy || 'Unknown'
+            action: `User ${user.firstName} ${user.lastName} (${user.email}) was deactivated`,
+            user: req.user?.email || 'Unknown'
         })
 
         res.status(200).json({ 
@@ -138,12 +137,11 @@ const deactivateUser = async (req, res) => {
 
 const reactivateUser = async (req, res) => {
     const { id } = req.params
-    const { performedBy } = req.body
 
     try {
         const user = await User.findByIdAndUpdate(
             id,
-            { 
+            {
                 status: 'active',
                 deactivatedAt: null
             },
@@ -156,8 +154,8 @@ const reactivateUser = async (req, res) => {
 
         await logAudit({
             module: 'User',
-            action: `User ${user.firstName} ${user.lastName} (${user.email}) was reactivated by ${performedBy || 'Unknown'}`,
-            user: performedBy || 'Unknown'
+            action: `User ${user.firstName} ${user.lastName} (${user.email}) was reactivated`,
+            user: req.user?.email || 'Unknown'
         })
 
         res.status(200).json({ 
@@ -171,7 +169,7 @@ const reactivateUser = async (req, res) => {
 
 const updateUserRole = async (req, res) => {
     const { id } = req.params
-    const { role, performedBy } = req.body
+    const { role } = req.body
 
     if (!['admin', 'staff'].includes(role)) {
         return res.status(400).json({ error: 'Invalid role' })
@@ -179,7 +177,7 @@ const updateUserRole = async (req, res) => {
 
     try {
         const oldUser = await User.findById(id)
-        
+
         const user = await User.findByIdAndUpdate(
             id,
             { role },
@@ -192,8 +190,8 @@ const updateUserRole = async (req, res) => {
 
         await logAudit({
             module: 'User',
-            action: `User ${user.firstName} ${user.lastName} (${user.email}) role changed from ${oldUser.role} to ${role} by ${performedBy || 'Unknown'}`,
-            user: performedBy || 'Unknown'
+            action: `User ${user.firstName} ${user.lastName} (${user.email}) role changed from ${oldUser.role} to ${role}`,
+            user: req.user?.email || 'Unknown'
         })
 
         res.status(200).json(user)
