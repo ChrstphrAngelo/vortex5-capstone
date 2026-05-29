@@ -240,7 +240,8 @@ const staggerContainer = {
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: center;
 }
 
         .blob-container {
@@ -694,14 +695,15 @@ const staggerContainer = {
 
         .feature-card {
           background: white;
-          padding: 1.5rem;
+          padding: 2rem 1.5rem;
           border-radius: 16px;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
           border: 1px solid #f3f4f6;
           transition: all 0.3s;
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
+          align-items: center;
+          text-align: center;
         }
 
         .feature-card:hover {
@@ -732,12 +734,16 @@ const staggerContainer = {
           font-weight: 700;
           color: #111827;
           margin-bottom: 8px;
+          text-align: center;
+          width: 100%;
         }
 
         .feature-card p {
           font-size: 14px;
           color: #6b7280;
           line-height: 1.5;
+          text-align: center;
+          width: 100%;
         }
 
         /* FAQ Section */
