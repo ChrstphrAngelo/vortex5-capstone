@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import bewairLogo from '../assets/bewair_logo_black.png';
+import bewairLogoWhite from '../assets/bewair_logo_white.png';
 import {
   Activity,
   Phone,
@@ -355,7 +356,7 @@ const staggerContainer = {
   border-radius: 14px;
   border: none;
   color: white;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -471,7 +472,7 @@ const staggerContainer = {
         }
 
         .section-title {
-          font-size: 48px;
+          font-size: clamp(28px, 4vw, 48px);
           font-weight: 700;
           color: #111827;
           margin-bottom: 16px;
@@ -487,7 +488,7 @@ const staggerContainer = {
         /* Problem Section */
         .problem-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
           gap: 2rem;
         }
 
@@ -563,7 +564,7 @@ const staggerContainer = {
         /* Solution Section */
         .solution-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
           gap: 3rem;
           align-items: center;
         }
@@ -632,27 +633,23 @@ const staggerContainer = {
 
         .visual-circle-1 {
           position: absolute;
-          top: 0;
-          right: 0;
+          top: -80px;
+          right: -80px;
           width: 160px;
           height: 160px;
           background: #60a5fa;
           border-radius: 50%;
-          margin-right: -80px;
-          margin-top: -80px;
           opacity: 0.5;
         }
 
         .visual-circle-2 {
           position: absolute;
-          bottom: 0;
-          left: 0;
+          bottom: -80px;
+          left: -80px;
           width: 160px;
           height: 160px;
           background: #a78bfa;
           border-radius: 50%;
-          margin-left: -80px;
-          margin-bottom: -80px;
           opacity: 0.5;
         }
 
@@ -739,7 +736,7 @@ const staggerContainer = {
         /* FAQ Section */
         .faq-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
           gap: 1.5rem;
         }
 
@@ -1367,7 +1364,7 @@ const staggerContainer = {
           <div className="footer-grid">
             <div>
               <div className="footer-logo">
-                <img src={bewairLogo} alt="BewAir" className="footer-logo-img" />
+                <img src={bewairLogoWhite} alt="BewAir" className="footer-logo-img" />
                 <h3>BewAir</h3>
               </div>
               <p>
