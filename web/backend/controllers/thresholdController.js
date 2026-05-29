@@ -30,7 +30,7 @@ const getThresholds = async (req, res) => {
       logAudit({
         module: 'Configuration',
         action: `Created threshold "${label}"`,
-        user: req.body.user || 'Admin'
+        user: req.user?.email || 'Unknown'
       })
 
       res.status(200).json(threshold)
@@ -53,7 +53,7 @@ const deleteThreshold = async (req, res) => {
     logAudit({
     module: 'Configuration',
     action: `Deleted threshold "${threshold.label}`,
-    user: (req.body && req.body.user) ? req.body.user : 'Admin'
+    user: req.user?.email || 'Unknown'
   });
 
     res.status(200).json(threshold)
@@ -85,7 +85,7 @@ const addAdvisory = async (req, res) => {
     logAudit({
     module: 'Advisory',
     action: `Added advisory "${advisory}" to threshold "${threshold.label}"`,
-    user: req.body.user || 'Admin'
+    user: req.user?.email || 'Unknown'
   });
 
     res.status(200).json(threshold)
@@ -116,7 +116,7 @@ const updateAdvisory = async (req, res) => {
     logAudit({
     module: 'Advisory',
     action: `Updated advisory at index ${index} for threshold "${threshold.label}"`,
-    user: req.body.user || 'Admin'
+    user: req.user?.email || 'Unknown'
   });
 
     res.status(200).json(threshold)
@@ -142,9 +142,9 @@ const deleteAdvisory = async (req, res) => {
     logAudit({
     module: 'Advisory',
     action: `Deleted advisory at index ${index} from threshold "${threshold.label}"`,
-    user: (req.body && req.body.user) ? req.body.user : 'Admin'
+    user: req.user?.email || 'Unknown'
   });
-    
+
     res.status(200).json(threshold)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -171,7 +171,7 @@ const updateThreshold = async (req, res) => {
     logAudit({
       module: 'Configuration',
       action: `Updated threshold "${threshold.label}"`,
-      user: req.body.user || 'Admin'
+      user: req.user?.email || 'Unknown'
     })
 
     res.status(200).json(threshold)
