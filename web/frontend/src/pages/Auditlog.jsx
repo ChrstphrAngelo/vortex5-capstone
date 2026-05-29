@@ -71,7 +71,9 @@ const AuditLogs = () => {
           >
             <option value="all">All</option>
             <option value="Bulletin Board">Bulletin Board</option>
-            <option value="Thresholds">Thresholds</option>
+            <option value="Classroom">Classroom</option>
+            <option value="Configuration">Configuration</option>
+            <option value="Advisory">Advisory</option>
             <option value="User">User</option>
           </select>
         </div>
