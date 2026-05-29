@@ -232,7 +232,7 @@ const staggerContainer = {
         /* Hero Section */
         .hero {
   min-height: 100vh;
-  padding: 140px 2rem 100px;
+  padding: 100px 2rem 80px;
   background:
     radial-gradient(circle at top left, rgba(59,130,246,0.15), transparent 35%),
     radial-gradient(circle at top right, rgba(139,92,246,0.12), transparent 35%),
@@ -333,7 +333,7 @@ const staggerContainer = {
           font-size: 20px;
           color: #4b5563;
           line-height: 1.6;
-          margin-bottom: 40px;
+          margin-bottom: 56px;
           max-width: 800px;
           margin-left: auto;
           margin-right: auto;
@@ -389,7 +389,7 @@ const staggerContainer = {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
           gap: 2rem;
-          margin-top: 80px;
+          margin-top: 48px;
           max-width: 900px;
           margin-left: auto;
           margin-right: auto;
@@ -454,6 +454,9 @@ const staggerContainer = {
         }
 
         .section-header {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           text-align: center;
           margin-bottom: 64px;
         }
@@ -696,6 +699,9 @@ const staggerContainer = {
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
           border: 1px solid #f3f4f6;
           transition: all 0.3s;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
         }
 
         .feature-card:hover {
@@ -711,6 +717,7 @@ const staggerContainer = {
           align-items: center;
           justify-content: center;
           margin-bottom: 1rem;
+          flex-shrink: 0;
         }
 
         .gradient-red { background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); }
@@ -1018,12 +1025,6 @@ const staggerContainer = {
                 )}
               </button>
             ))}
-            <button onClick={() => navigate('/login')} className="nav-cta nav-cta-login">
-              Log In
-            </button>
-            <button onClick={() => navigate('/signup')} className="nav-cta">
-              Sign Up
-            </button>
           </div>
         </div>
       </nav>
