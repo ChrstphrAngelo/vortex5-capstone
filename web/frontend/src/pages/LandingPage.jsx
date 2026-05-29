@@ -231,8 +231,7 @@ const staggerContainer = {
 
         /* Hero Section */
         .hero {
-  min-height: 100vh;
-  padding: 100px 2rem 80px;
+  padding: 110px 2rem 100px;
   background:
     radial-gradient(circle at top left, rgba(59,130,246,0.15), transparent 35%),
     radial-gradient(circle at top right, rgba(139,92,246,0.12), transparent 35%),
@@ -345,6 +344,7 @@ const staggerContainer = {
           gap: 16px;
           justify-content: center;
           flex-wrap: wrap;
+          margin-top: 48px !important;
         }
 
         .btn-primary {
