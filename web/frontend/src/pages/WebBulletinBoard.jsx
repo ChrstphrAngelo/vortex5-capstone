@@ -12,13 +12,15 @@ const WebBulletinBoard = () => {
 
   useEffect(() => {
     const fetchMedia = async () => {
-    const res = await fetch('/api/media')      
-    const json = await res.json()
+      const res = await fetch('/api/media', {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      })
+      const json = await res.json()
       if (res.ok) setMediaList(json)
     }
 
     fetchMedia()
-  }, [])
+  }, [user])
 
       const handleFileChange = (e) => {
       setVideoFile(e.target.files[0])
@@ -37,6 +39,7 @@ const WebBulletinBoard = () => {
   try {
     const res = await fetch('/api/media', {
       method: 'POST',
+      headers: { Authorization: `Bearer ${user?.token}` },
       body: formData
     })
 
@@ -463,11 +466,7 @@ const handleUpdate = async () => {
           try {
             const res = await fetch(`/api/media/${m._id}`, {
               method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                performedBy: user?.email || 'Unknown',
-                videoTitle: m.title || 'Untitled',
-              }),
+              headers: { Authorization: `Bearer ${user?.token}` },
             })
             const json = await res.json()
             if (!res.ok) {
