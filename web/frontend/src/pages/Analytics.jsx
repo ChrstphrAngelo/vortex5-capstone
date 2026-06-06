@@ -20,13 +20,14 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import Switch from '@mui/material/Switch'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import Button from '@mui/material/Button'
 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { DataGrid } from '@mui/x-data-grid'
 
-import { Activity, TrendingUp, TrendingDown, Minus, Clock, ShieldCheck } from 'lucide-react'
+import { Activity, TrendingUp, TrendingDown, Minus, Clock, ShieldCheck, Download } from 'lucide-react'
 
 const CATEGORY_COLORS = {
   'Good': '#16a34a',
@@ -563,6 +564,91 @@ const Analytics = () => {
     }
   }, [data, ec])
 
+  const downloadReport = () => {
+    if (!data) return
+    const effectiveTo = liveMode ? dayjs() : to
+    const deviceLabel = deviceId === 'all'
+      ? 'All devices'
+      : (devices.find(d => d.deviceId === deviceId)?.name || deviceId)
+
+    const rows = []
+
+    rows.push(['BewAir Analytics Report'])
+    rows.push(['Generated', dayjs().format('MMM D YYYY, h:mm A')])
+    rows.push(['Period', `${from.format('MMM D YYYY h:mm A')} — ${effectiveTo.format('MMM D YYYY h:mm A')}`])
+    rows.push(['Device', deviceLabel])
+    rows.push(['Total Readings', data.kpis.count])
+    rows.push([])
+
+    rows.push(['KPI SUMMARY'])
+    rows.push(['Metric', 'Value'])
+    rows.push(['Average AQI', data.kpis.avg])
+    rows.push(['Average Category', data.kpis.avgCategory])
+    rows.push(['Highest AQI', data.kpis.max])
+    rows.push(['Hours Over Limit (AQI)', kpiExtras.excHours])
+    rows.push(['Trend vs Previous Period', kpiExtras.trendDelta != null ? `${kpiExtras.trendDelta > 0 ? '+' : ''}${kpiExtras.trendDelta}%` : 'N/A'])
+    rows.push([])
+
+    rows.push(['POLLUTANT STATISTICS'])
+    rows.push(['Pollutant', 'Average', 'Min', 'Max', 'Stability', 'Status'])
+    POLLUTANTS.forEach(p => {
+      const s = data.pollutantStats?.[p.key]
+      if (!s) return
+      const limit = limits?.[p.key]
+      let status = 'No limit'
+      if (limit != null && s.avg != null) status = s.avg > limit ? 'Over limit' : 'Within limit'
+      rows.push([
+        p.unit ? `${p.label} (${p.unit})` : p.label,
+        s.avg ?? '—', s.min ?? '—', s.max ?? '—',
+        variabilityWord(s.avg, s.std), status,
+      ])
+    })
+    rows.push([])
+
+    rows.push(['THRESHOLD EXCEEDANCES'])
+    rows.push(['Pollutant', 'Limit', 'Hours Over', 'Total Hours', '% Time'])
+    ;(data.exceedances || []).forEach(e => {
+      rows.push([FIELD_LABELS[e.field] || e.field, e.limit, e.hours, e.totalHours, `${e.pctTime}%`])
+    })
+    rows.push([])
+
+    if (data.comparison) {
+      rows.push(['COMPARATIVE ANALYSIS'])
+      rows.push(['Comparison', 'Avg AQI'])
+      rows.push(['Current Period', data.comparison.current.avgAqi])
+      rows.push(['Previous Period', data.comparison.previous.avgAqi])
+      rows.push(['Weekday', data.comparison.weekday.avgAqi])
+      rows.push(['Weekend', data.comparison.weekend.avgAqi])
+      rows.push([])
+    }
+
+    rows.push(['RECENT READINGS (last 100)'])
+    rows.push(['Time', 'Device ID', 'AQI', 'Category', 'PM1', 'PM2.5', 'PM10', 'CO2', 'TVOC', 'HCHO', 'Temp (°C)', 'Humidity (%)'])
+    ;(data.recent || []).forEach(r => {
+      rows.push([
+        dayjs(r.createdAt).format('MMM D YYYY h:mm:ss A'),
+        r.deviceId, r.Aqi, r.category,
+        r.PM1, r.PM25, r.PM10, r.CO2, r.TVOC, r.Formaldehyde, r.Temperature, r.Humidity,
+      ])
+    })
+
+    const csv = rows.map(row =>
+      row.map(cell => {
+        const s = String(cell ?? '')
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? `"${s.replace(/"/g, '""')}"` : s
+      }).join(',')
+    ).join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `analytics-report-${dayjs().format('YYYY-MM-DD-HHmm')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // ---- Admin gate ----
   if (!user) {
     return <ThemeProvider theme={muiTheme}><CssBaseline /><Box sx={{ p: 3 }}><Alert severity="warning">Please log in.</Alert></Box></ThemeProvider>
@@ -585,6 +671,17 @@ const Analytics = () => {
           {/* Header */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
             <Typography variant="h4" sx={{ fontWeight: 800 }}>Analytics</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Download size={16} />}
+                onClick={downloadReport}
+                disabled={!data}
+                sx={{ borderRadius: '999px', textTransform: 'none', fontWeight: 600 }}
+              >
+                Download Report
+              </Button>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 0.5, borderRadius: '999px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
               <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: liveMode ? '#22c55e' : '#94a3b8', boxShadow: liveMode ? '0 0 0 4px rgba(34,197,94,0.18)' : 'none' }} />
               <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
@@ -593,6 +690,7 @@ const Analytics = () => {
               <FormControlLabel sx={{ ml: 0.5, mr: -0.5 }} control={
                 <Switch size="small" checked={liveMode} onChange={(e) => { setLiveMode(e.target.checked); if (e.target.checked) setTo(dayjs()) }} />
               } label="" />
+            </Box>
             </Box>
           </Box>
 
