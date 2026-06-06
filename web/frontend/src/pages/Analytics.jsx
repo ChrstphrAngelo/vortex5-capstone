@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
 import { useTheme as useAppTheme } from '../hooks/useTheme'
 import dayjs from 'dayjs'
@@ -28,6 +28,8 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { DataGrid } from '@mui/x-data-grid'
 
 import { Activity, TrendingUp, TrendingDown, Minus, Clock, ShieldCheck, Download } from 'lucide-react'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 
 const CATEGORY_COLORS = {
   'Good': '#16a34a',
@@ -134,6 +136,9 @@ const Analytics = () => {
 
   const [liveMode, setLiveMode] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
+
+  const reportRef = useRef(null)
 
   // ECharts shared theme colors
   const ec = useMemo(() => ({
@@ -564,89 +569,86 @@ const Analytics = () => {
     }
   }, [data, ec])
 
-  const downloadReport = () => {
-    if (!data) return
+  const downloadReport = async () => {
+    if (!data || !reportRef.current) return
+    setPdfLoading(true)
+
     const effectiveTo = liveMode ? dayjs() : to
     const deviceLabel = deviceId === 'all'
       ? 'All devices'
       : (devices.find(d => d.deviceId === deviceId)?.name || deviceId)
 
-    const rows = []
+    try {
+      const el = reportRef.current
 
-    rows.push(['BewAir Analytics Report'])
-    rows.push(['Generated', dayjs().format('MMM D YYYY, h:mm A')])
-    rows.push(['Period', `${from.format('MMM D YYYY h:mm A')} — ${effectiveTo.format('MMM D YYYY h:mm A')}`])
-    rows.push(['Device', deviceLabel])
-    rows.push(['Total Readings', data.kpis.count])
-    rows.push([])
+      // Force light background so charts are readable on white PDF
+      const prevBg = el.style.background
+      el.style.background = '#ffffff'
 
-    rows.push(['KPI SUMMARY'])
-    rows.push(['Metric', 'Value'])
-    rows.push(['Average AQI', data.kpis.avg])
-    rows.push(['Average Category', data.kpis.avgCategory])
-    rows.push(['Highest AQI', data.kpis.max])
-    rows.push(['Hours Over Limit (AQI)', kpiExtras.excHours])
-    rows.push(['Trend vs Previous Period', kpiExtras.trendDelta != null ? `${kpiExtras.trendDelta > 0 ? '+' : ''}${kpiExtras.trendDelta}%` : 'N/A'])
-    rows.push([])
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        scrollY: -window.scrollY,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
+      })
 
-    rows.push(['POLLUTANT STATISTICS'])
-    rows.push(['Pollutant', 'Average', 'Min', 'Max', 'Stability', 'Status'])
-    POLLUTANTS.forEach(p => {
-      const s = data.pollutantStats?.[p.key]
-      if (!s) return
-      const limit = limits?.[p.key]
-      let status = 'No limit'
-      if (limit != null && s.avg != null) status = s.avg > limit ? 'Over limit' : 'Within limit'
-      rows.push([
-        p.unit ? `${p.label} (${p.unit})` : p.label,
-        s.avg ?? '—', s.min ?? '—', s.max ?? '—',
-        variabilityWord(s.avg, s.std), status,
-      ])
-    })
-    rows.push([])
+      el.style.background = prevBg
 
-    rows.push(['THRESHOLD EXCEEDANCES'])
-    rows.push(['Pollutant', 'Limit', 'Hours Over', 'Total Hours', '% Time'])
-    ;(data.exceedances || []).forEach(e => {
-      rows.push([FIELD_LABELS[e.field] || e.field, e.limit, e.hours, e.totalHours, `${e.pctTime}%`])
-    })
-    rows.push([])
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
-    if (data.comparison) {
-      rows.push(['COMPARATIVE ANALYSIS'])
-      rows.push(['Comparison', 'Avg AQI'])
-      rows.push(['Current Period', data.comparison.current.avgAqi])
-      rows.push(['Previous Period', data.comparison.previous.avgAqi])
-      rows.push(['Weekday', data.comparison.weekday.avgAqi])
-      rows.push(['Weekend', data.comparison.weekend.avgAqi])
-      rows.push([])
+      const pageW = pdf.internal.pageSize.getWidth()
+      const pageH = pdf.internal.pageSize.getHeight()
+      const margin = 12
+      const contentW = pageW - margin * 2
+
+      // Header
+      pdf.setFontSize(18)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('BewAir — Analytics Report', margin, margin + 6)
+
+      pdf.setFontSize(9)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(100)
+      pdf.text(`Generated: ${dayjs().format('MMM D YYYY, h:mm A')}`, margin, margin + 12)
+      pdf.text(`Period: ${from.format('MMM D YYYY h:mm A')} — ${effectiveTo.format('MMM D YYYY h:mm A')}`, margin, margin + 17)
+      pdf.text(`Device: ${deviceLabel}`, margin, margin + 22)
+      pdf.setTextColor(0)
+
+      // Charts image — fit width, split across pages
+      const headerH = 30
+      const imgW = contentW
+      const imgH = (canvas.height / canvas.width) * imgW
+
+      const availableH = pageH - margin - headerH
+      let yOffset = 0
+
+      while (yOffset < imgH) {
+        const sliceH = Math.min(availableH, imgH - yOffset)
+        const srcY = (yOffset / imgH) * canvas.height
+        const srcH = (sliceH / imgH) * canvas.height
+
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = srcH
+        const ctx = sliceCanvas.getContext('2d')
+        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
+
+        const sliceData = sliceCanvas.toDataURL('image/png')
+        const yPos = yOffset === 0 ? margin + headerH : margin
+
+        pdf.addImage(sliceData, 'PNG', margin, yPos, imgW, sliceH)
+        yOffset += sliceH
+
+        if (yOffset < imgH) pdf.addPage()
+      }
+
+      pdf.save(`bewair-analytics-${dayjs().format('YYYY-MM-DD-HHmm')}.pdf`)
+    } finally {
+      setPdfLoading(false)
     }
-
-    rows.push(['RECENT READINGS (last 100)'])
-    rows.push(['Time', 'Device ID', 'AQI', 'Category', 'PM1', 'PM2.5', 'PM10', 'CO2', 'TVOC', 'HCHO', 'Temp (°C)', 'Humidity (%)'])
-    ;(data.recent || []).forEach(r => {
-      rows.push([
-        dayjs(r.createdAt).format('MMM D YYYY h:mm:ss A'),
-        r.deviceId, r.Aqi, r.category,
-        r.PM1, r.PM25, r.PM10, r.CO2, r.TVOC, r.Formaldehyde, r.Temperature, r.Humidity,
-      ])
-    })
-
-    const csv = rows.map(row =>
-      row.map(cell => {
-        const s = String(cell ?? '')
-        return s.includes(',') || s.includes('"') || s.includes('\n')
-          ? `"${s.replace(/"/g, '""')}"` : s
-      }).join(',')
-    ).join('\n')
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `analytics-report-${dayjs().format('YYYY-MM-DD-HHmm')}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   // ---- Admin gate ----
@@ -677,10 +679,10 @@ const Analytics = () => {
                 size="small"
                 startIcon={<Download size={16} />}
                 onClick={downloadReport}
-                disabled={!data}
+                disabled={!data || pdfLoading}
                 sx={{ borderRadius: '999px', textTransform: 'none', fontWeight: 600 }}
               >
-                Download Report
+                {pdfLoading ? 'Generating PDF…' : 'Download PDF'}
               </Button>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 0.5, borderRadius: '999px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
               <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: liveMode ? '#22c55e' : '#94a3b8', boxShadow: liveMode ? '0 0 0 4px rgba(34,197,94,0.18)' : 'none' }} />
@@ -741,7 +743,7 @@ const Analytics = () => {
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           {data && !loading && (
-            <>
+            <div ref={reportRef}>
               {/* KPI cards — dashboard-style grid, auto-fit, larger tiles */}
               <div className="dash-kpis analytics-kpis">
                 <AnalyticsKpi
@@ -953,7 +955,7 @@ const Analytics = () => {
                   </CardContent>
                 </Card>
               )}
-            </>
+            </div>
           )}
         </Box>
       </LocalizationProvider>

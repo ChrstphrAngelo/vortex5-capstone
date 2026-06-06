@@ -42,13 +42,15 @@ const BulletinBoard = () => {
   useEffect(() => {
     const fetchMedia = async () => {
       try {
-        const res = await fetch('/api/media')
+        const headers = {}
+        if (user?.token) headers.Authorization = `Bearer ${user.token}`
+        const res = await fetch('/api/media', { headers })
         const json = await res.json()
         if (res.ok && json.length > 0) setMediaList(json)
       } catch (err) { console.error('media:', err) }
     }
     fetchMedia()
-  }, [])
+  }, [user])
 
   // ---------- Fetch announcements ----------
   useEffect(() => {

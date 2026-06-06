@@ -19,7 +19,6 @@ import BulletinBoard from './pages/BulletinBoard.jsx';
 import AnimationViewer from './pages/AnimationViewer.jsx';
 import WebBulletinBoard from './pages/WebBulletinBoard.jsx';
 import Thresholds from './pages/Thresholds.jsx';
-import LandingPage from './pages/LandingPage.jsx';
 import DeviceDetail from './pages/DeviceDetail.jsx';
 
 // Create a separate component for the routes (needs to be inside BrowserRouter)
@@ -28,7 +27,7 @@ function AppRoutes() {
   const location = useLocation()
   
   // Define public pages that should NOT have Navbar and Header
-  const publicPages = ['/login', '/signup', '/landingpage']
+  const publicPages = ['/login', '/signup']
   const isPublicPage = publicPages.includes(location.pathname)
 
   return (
@@ -112,13 +111,7 @@ function AppRoutes() {
               element={<UserManagement />}
             /> 
 
-            {/* Public routes - no authentication needed */}
-            <Route 
-              path="/landingpage"
-              element={<LandingPage />}
-            /> 
-
-            <Route 
+            <Route
               path="/login"
               element={!user ? <Login /> : <Navigate to="/" />}
             />

@@ -21,7 +21,7 @@ const uploadVideo = (req, res, next) => {
   })
 }
 
-router.get('/',       requireAuth, getMedia)
+router.get('/',       getMedia)
 router.post('/',      requireAuth, requireAdmin, uploadVideo, createMedia)
 router.delete('/:id', requireAuth, requireAdmin, deleteMedia)
 
